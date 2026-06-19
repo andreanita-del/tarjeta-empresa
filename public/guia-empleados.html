@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Guía Tarjetas Empresa</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0f1e;--surface:#111827;--surface2:#1e2a3a;--border:rgba(255,255,255,0.08);
+      --accent:#6366f1;--accent2:#818cf8;--success:#22d3a3;--danger:#f87171;
+      --text:#f1f5f9;--muted:#94a3b8;--warning:#f59e0b;
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:16px;line-height:1.6}
+
+    /* HERO */
+    .hero{background:linear-gradient(135deg,#1e1b4b 0%,#0f172a 60%);padding:4rem 1.5rem 3rem;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%);pointer-events:none}
+    .hero-emoji{font-size:3.5rem;display:block;margin-bottom:1rem}
+    .hero h1{font-size:2rem;font-weight:700;letter-spacing:-0.5px;margin-bottom:0.75rem}
+    .hero h1 span{color:var(--accent2)}
+    .hero p{color:var(--muted);font-size:1rem;max-width:480px;margin:0 auto 1.5rem}
+    .hero-url{display:inline-block;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);border-radius:8px;padding:0.6rem 1.25rem;font-size:0.95rem;font-weight:600;color:var(--accent2);text-decoration:none;letter-spacing:0.5px}
+
+    /* STEPS */
+    .container{max-width:640px;margin:0 auto;padding:2.5rem 1.25rem}
+    .section-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:1.5rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)}
+
+    .step{display:flex;gap:1rem;margin-bottom:2rem;align-items:flex-start}
+    .step-num{flex-shrink:0;width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:0.9rem;display:flex;align-items:center;justify-content:center}
+    .step-body{flex:1}
+    .step-title{font-weight:700;font-size:1rem;margin-bottom:0.35rem}
+    .step-desc{color:var(--muted);font-size:0.9rem;line-height:1.6}
+    .step-desc strong{color:var(--text)}
+
+    /* MOCK SCREENS */
+    .mock{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin:1rem 0;overflow:hidden}
+    .mock-bar{background:var(--surface2);padding:0.6rem 1rem;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+    .mock-dots{display:flex;gap:5px}
+    .mock-dot{width:10px;height:10px;border-radius:50%}
+    .mock-url{flex:1;background:var(--bg);border-radius:6px;padding:4px 10px;font-size:0.72rem;color:var(--muted);text-align:center}
+    .mock-body{padding:1.25rem}
+    .mock-header{background:var(--surface2);padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;font-weight:600;border-radius:10px;margin-bottom:0.75rem}
+    .mock-card{background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:12px;padding:1.1rem;color:#fff;margin-bottom:0.75rem}
+    .mock-card-num{font-size:1rem;font-weight:700;letter-spacing:3px;margin-bottom:0.6rem}
+    .mock-card-row{display:flex;justify-content:space-between;font-size:0.75rem;opacity:0.85}
+    .mock-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.82rem;color:var(--muted);margin-bottom:0.5rem}
+    .mock-input.active{border-color:var(--accent);color:var(--text)}
+    .mock-btn{background:var(--accent);color:#fff;border-radius:8px;padding:0.65rem;text-align:center;font-size:0.85rem;font-weight:600;margin-top:0.25rem}
+    .mock-btn.ghost{background:var(--surface2);color:var(--text)}
+    .mock-tabs{display:flex;background:var(--bg);border-radius:8px;padding:3px;gap:3px;margin-bottom:0.75rem}
+    .mock-tab{flex:1;padding:7px;border-radius:6px;font-size:0.78rem;font-weight:600;text-align:center}
+    .mock-tab.active{background:var(--accent);color:#fff}
+    .mock-tab:not(.active){color:var(--muted)}
+
+    /* GASTO ITEM */
+    .gasto-item{display:flex;align-items:center;gap:0.65rem;padding:0.7rem 0;border-bottom:1px solid var(--border)}
+    .gasto-item:last-child{border-bottom:none}
+    .gasto-icon{width:34px;height:34px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0}
+    .gasto-body{flex:1}
+    .gasto-title{font-size:0.82rem;font-weight:600}
+    .gasto-meta{font-size:0.7rem;color:var(--muted)}
+    .gasto-badge{font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;margin-top:3px;display:inline-block}
+    .badge-green{background:rgba(34,211,163,0.12);color:var(--success);border:1px solid rgba(34,211,163,0.3)}
+    .badge-red{background:rgba(248,113,113,0.12);color:var(--danger);border:1px solid rgba(248,113,113,0.3)}
+    .gasto-amount{font-weight:700;font-size:0.88rem}
+
+    /* UPLOAD ZONE */
+    .upload-zone{border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;font-size:0.8rem;color:var(--muted);margin:0.5rem 0}
+    .upload-zone .ai-tag{color:var(--accent2);font-size:0.72rem;margin-top:4px}
+
+    /* AI RESULT */
+    .ai-result{background:rgba(34,211,163,0.08);border:1px solid rgba(34,211,163,0.25);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.75rem;color:var(--success);margin-top:0.5rem}
+
+    /* TIPS */
+    .tips{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-top:2rem}
+    .tip{display:flex;gap:0.75rem;margin-bottom:1rem;align-items:flex-start}
+    .tip:last-child{margin-bottom:0}
+    .tip-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px}
+    .tip-text{font-size:0.88rem;color:var(--muted);line-height:1.5}
+    .tip-text strong{color:var(--text)}
+
+    /* FOOTER */
+    .footer{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.82rem;border-top:1px solid var(--border)}
+    .footer a{color:var(--accent2);text-decoration:none}
+
+    /* INSTALL STEPS */
+    .install-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin:0.75rem 0}
+    .install-card{background:var(--surface2);border-radius:10px;padding:0.85rem;font-size:0.82rem}
+    .install-card .os{font-weight:700;margin-bottom:0.4rem;font-size:0.88rem}
+    .install-card ol{padding-left:1.1rem;color:var(--muted);line-height:1.7}
+    .install-card ol li{margin-bottom:2px}
+
+    @media(max-width:500px){
+      .hero h1{font-size:1.6rem}
+      .install-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <span class="hero-emoji">💳</span>
+  <h1>Guía para <span>empleados</span></h1>
+  <p>Cómo usar la app de tarjetas de empresa en tu móvil — paso a paso</p>
+  <a href="https://tarjeta-empresa.vercel.app" class="hero-url" target="_blank">tarjeta-empresa.vercel.app</a>
+</div>
+
+<div class="container">
+
+  <!-- PASO 1: ABRIR -->
+  <p class="section-title">Primeros pasos</p>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-title">Abre la app en tu móvil</div>
+      <div class="step-desc">Abre <strong>Safari</strong> (iPhone) o <strong>Chrome</strong> (Android) y ve a:<br><br>
+        <a href="https://tarjeta-empresa.vercel.app" style="color:var(--accent2);font-weight:600">tarjeta-empresa.vercel.app</a>
+      </div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-bar">
+          <div class="mock-dots">
+            <div class="mock-dot" style="background:#f87171"></div>
+            <div class="mock-dot" style="background:#f59e0b"></div>
+            <div class="mock-dot" style="background:#22d3a3"></div>
+          </div>
+          <div class="mock-url">tarjeta-empresa.vercel.app</div>
+        </div>
+        <div class="mock-body">
+          <div style="text-align:center;padding:0.5rem 0 1rem">
+            <div style="font-size:1.6rem;font-weight:700;margin-bottom:0.25rem">💳 <span style="color:var(--accent2)">Tarjetas</span></div>
+            <div style="font-size:0.78rem;color:var(--muted)">Gastos de empresa</div>
+          </div>
+          <div class="mock-tabs">
+            <div class="mock-tab active">Entrar</div>
+            <div class="mock-tab">Crear cuenta</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 2: CREAR CUENTA -->
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-title">Crea tu cuenta (solo la primera vez)</div>
+      <div class="step-desc">Pulsa <strong>"Crear cuenta"</strong>, escribe tu email de empresa y elige una contraseña de al menos 6 caracteres. Después pulsa <strong>"Crear cuenta"</strong>.</div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div class="mock-tabs">
+            <div class="mock-tab">Entrar</div>
+            <div class="mock-tab active">Crear cuenta</div>
+          </div>
+          <div class="mock-input active">maria@empresa.com</div>
+          <div class="mock-input active">••••••••</div>
+          <div class="mock-input active">••••••••</div>
+          <div class="mock-btn">Crear cuenta</div>
+        </div>
+      </div>
+      <div class="step-desc" style="margin-top:0.5rem">⚠️ <strong>Importante:</strong> usa el mismo email que te ha dado la empresa. Una vez creada, ya no necesitas repetir este paso.</div>
+    </div>
+  </div>
+
+  <!-- PASO 3: INSTALAR -->
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <div class="step-title">Instala la app en tu pantalla de inicio</div>
+      <div class="step-desc">Así la tendrás como una app normal, sin tener que abrir el navegador cada vez.</div>
+      <div class="install-grid">
+        <div class="install-card">
+          <div class="os">🍎 iPhone</div>
+          <ol>
+            <li>Abre en <strong>Safari</strong></li>
+            <li>Toca el botón compartir ↗</li>
+            <li>Baja y toca <strong>"Añadir a pantalla de inicio"</strong></li>
+            <li>Pulsa <strong>Añadir</strong></li>
+          </ol>
+        </div>
+        <div class="install-card">
+          <div class="os">🤖 Android</div>
+          <ol>
+            <li>Abre en <strong>Chrome</strong></li>
+            <li>Toca el menú ⋮</li>
+            <li>Toca <strong>"Añadir a pantalla de inicio"</strong></li>
+            <li>Confirma</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 4: VER TARJETA -->
+  <p class="section-title" style="margin-top:1rem">Uso diario</p>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <div class="step-title">Ve tu tarjeta asignada</div>
+      <div class="step-desc">Cuando entres verás la tarjeta que te ha asignado la empresa, con la fecha en que te la entregaron.</div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div class="mock-header">
+            <span>💳 Tarjetas Empresa</span>
+            <span style="font-size:0.75rem;color:var(--muted)">María García</span>
+          </div>
+          <div class="mock-card">
+            <div class="mock-card-num">•••• •••• •••• 9018</div>
+            <div class="mock-card-row">
+              <div><div style="opacity:0.7;font-size:0.68rem">Titular</div><strong>María García</strong></div>
+              <div style="text-align:right"><div style="opacity:0.7;font-size:0.68rem">Entregada</div><strong>01 jun 2026</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 5: AÑADIR GASTO -->
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <div class="step-title">Registra un gasto</div>
+      <div class="step-desc">Cada vez que uses la tarjeta, pulsa <strong>"+ Gasto"</strong> y rellena los datos. <strong>Sube siempre la foto del ticket o factura.</strong></div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div style="font-size:0.85rem;font-weight:700;text-align:center;margin-bottom:0.75rem">Registrar gasto</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <div class="mock-input active">19 jun 2026</div>
+            <div class="mock-input active">🍽 Comidas</div>
+          </div>
+          <div class="mock-input active">Restaurante El Puerto</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <div class="mock-input active">45.80</div>
+            <div class="mock-input active">Le Mans</div>
+          </div>
+          <div class="upload-zone">
+            📷 Toca para fotografiar o subir ticket
+            <div class="ai-tag">La IA leerá los datos automáticamente</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 6: IA -->
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <div class="step-title">La IA lee el ticket por ti</div>
+      <div class="step-desc">Cuando hagas la foto del ticket, la app lee automáticamente la <strong>fecha</strong>, el <strong>proveedor</strong>, el <strong>importe</strong> y la <strong>categoría</strong>. Solo tienes que añadir el evento y guardar.</div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div class="upload-zone">📷 Toca para fotografiar o subir ticket</div>
+          <div class="ai-result">✓ IA detectó: fecha, proveedor, importe, categoría</div>
+          <div style="margin-top:0.5rem;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+            <div class="mock-input active">18 jun 2026</div>
+            <div class="mock-input active">📦 Material</div>
+          </div>
+          <div class="mock-input active">Transmival</div>
+          <div class="mock-input active">14.23</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 7: ESTADOS -->
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <div class="step-title">Entiende los colores</div>
+      <div class="step-desc">Cada gasto muestra si está justificado o no:</div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div class="gasto-item" style="border-left:3px solid var(--success);padding-left:10px">
+            <div class="gasto-icon">🍽</div>
+            <div class="gasto-body">
+              <div class="gasto-title">Restaurante El Puerto</div>
+              <div class="gasto-meta">Comidas · 19 jun 2026</div>
+              <div class="gasto-badge badge-green">✓ Confirmado</div>
+            </div>
+            <div class="gasto-amount" style="color:var(--success)">45.80 €</div>
+          </div>
+          <div class="gasto-item" style="border-left:3px solid var(--danger);padding-left:10px">
+            <div class="gasto-icon">⛽</div>
+            <div class="gasto-body">
+              <div class="gasto-title">Gasolinera BP</div>
+              <div class="gasto-meta">Gasoil · 18 jun 2026</div>
+              <div class="gasto-badge badge-red">⚠️ Sin confirmación</div>
+            </div>
+            <div class="gasto-amount" style="color:var(--danger)">65.00 €</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-desc" style="margin-top:0.5rem">
+        🟢 <strong>Verde</strong> = ticket subido, gasto confirmado<br>
+        🔴 <strong>Rojo</strong> = falta el ticket, sube la foto cuanto antes
+      </div>
+    </div>
+  </div>
+
+  <!-- PASO 8: DEVOLVER -->
+  <div class="step">
+    <div class="step-num">8</div>
+    <div class="step-body">
+      <div class="step-title">Devuelve la tarjeta</div>
+      <div class="step-desc">Cuando entregues la tarjeta a la empresa, pulsa <strong>"Devolver"</strong> y selecciona la fecha. Así queda registrado.</div>
+      <div class="mock" style="margin-top:0.75rem">
+        <div class="mock-body">
+          <div style="text-align:center;font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem">Confirma la devolución de la tarjeta</div>
+          <div class="mock-input active">30 jun 2026</div>
+          <div class="mock-btn" style="background:rgba(34,211,163,0.15);color:var(--success);margin-top:0.5rem">Confirmar devolución</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIPS -->
+  <div class="tips">
+    <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:1rem">Consejos importantes</div>
+    <div class="tip">
+      <div class="tip-icon">📸</div>
+      <div class="tip-text"><strong>Sube el ticket siempre el mismo día.</strong> Las fotos borrosas o con poca luz no se leen bien. Asegúrate de que el ticket esté plano y bien iluminado.</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🔴</div>
+      <div class="tip-text"><strong>Los gastos en rojo llaman la atención del responsable.</strong> Si ves un gasto en rojo, sube el ticket lo antes posible.</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">✏️</div>
+      <div class="tip-text"><strong>Puedes editar o borrar un gasto</strong> si te has equivocado. Pulsa el icono ✏️ o 🗑 junto al gasto.</div>
+    </div>
+    <div class="tip">
+      <div class="tip-icon">🔑</div>
+      <div class="tip-text"><strong>Guarda tu contraseña.</strong> La usarás cada vez que entres. Si la olvidas, contacta con la empresa.</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Tarjetas Empresa · <a href="https://tarjeta-empresa.vercel.app">tarjeta-empresa.vercel.app</a>
+</div>
+
+</body>
+</html>
