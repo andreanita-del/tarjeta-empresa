@@ -568,12 +568,18 @@ async function loadEmpleadoData(){
   const{data:t}=await sb.from('tarjetas').select('*').eq('empleado_id',currentUser.id).eq('activa',true).maybeSingle();
   miTarjeta=t;
   if(!t){
-    // No tarjeta assigned - show message but still allow adding gastos
-    document.getElementById('emp-no-card').classList.remove('hidden');
-    document.getElementById('emp-no-card').innerHTML = '<div style="padding:0.75rem;font-size:0.82rem;color:var(--muted);text-align:center">Sin tarjeta asignada — puedes registrar gastos seleccionando la tarjeta MC</div>';
+    // No tarjeta assigned - show empty table row with + buttons
+    document.getElementById('emp-card-display').classList.remove('hidden');
     document.getElementById('btn-add-gasto').style.display='flex';
     const{data:gastos}=await sb.from('gastos').select('*').eq('empleado_id',currentUser.id).order('fecha',{ascending:false});
     _empGastos=gastos||[];
+    // Show empty table row
+    const emptyTarjeta = {
+      id: null, nombre_titular: currentUser.email?.split('@')[0]||'—',
+      digitos:'——', fecha_entrega:null, fecha_devolucion:null,
+      coche:'', evento_principal:'', titular:'', andamur:'SIN', dkv:'SIN', dkv_importe:0
+    };
+    renderEmpTabla(emptyTarjeta, gastos||[]);
     renderGastosEmpleado(gastos||[]);
     return;
   }
