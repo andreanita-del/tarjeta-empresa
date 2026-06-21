@@ -208,7 +208,7 @@
                   <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
                   <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
                   <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
-                  <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA</th><th>F. DEVOLUCIÓN</th><th></th>
+                  <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>F. DEVOLUCIÓN</th><th></th>
                 </tr>
               </thead>
               <tbody id="tabla-body"><tr><td colspan="20"><div class="empty">No hay datos</div></td></tr></tbody>
@@ -880,7 +880,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="cursor:pointer" data-tid="${t.id}" data-field="fecha_entrega" data-val="${t.fecha_entrega||''}" data-label="F. Entrega" onclick="event.stopPropagation();openDatePickerCell(this)">${fmtDate(t.fecha_entrega)} ✎</td>
       <td style="cursor:pointer" onclick="event.stopPropagation();showResponsableDropdown(this,'${t.id}','${esc(t.nombre_titular)}')""><strong>${esc(t.nombre_titular)}</strong> ▾</td>
       <td style="color:var(--muted);font-size:0.7rem;cursor:pointer" onclick="event.stopPropagation();showCocheDropdown(this,'${t.id}','${esc(t.coche||'')}')">${esc(t.coche||'Sin coche')} ▾</td>
-      <td style="color:var(--muted);font-size:0.68rem">${esc(t.evento_principal||'')}</td>
+      <td style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-val="${esc(t.evento_principal||'')||''}" onclick="event.stopPropagation();editEventoCell(this)">${esc(t.evento_principal||'—')} ✎</td>
       ${CAT_COLS.map((cat,i)=>{
         const v=vals[i];
         if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" data-cat="${cat}" onclick="event.stopPropagation();openAdminGastoSheetWith(this.dataset.tid,this.dataset.cat)">+</td>`;
@@ -897,7 +897,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showAndamurDropdown(this,'${t.id}','${esc(t.andamur||'SIN')}')">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showDkvDropdown(this,'${t.id}','${esc(t.dkv||'SIN')}')">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
-      <td class="num" style="color:var(--muted);font-size:0.68rem">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'—'}</td>
+      <td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'<span style=\"color:var(--muted);opacity:0.4\">+</span>'}</td>
       <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
@@ -1466,6 +1466,79 @@ async function showEmpleadosPopup() {
   setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
 }
 
+// EVENTO EDIT
+function editEventoCell(el) {
+  const tarjetaId = el.dataset.tid;
+  const currentVal = el.dataset.val || '';
+  document.querySelectorAll('.evento-edit-popup').forEach(d=>d.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'evento-edit-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;padding:0.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:240px';
+  popup.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:600;color:#f69032;margin-bottom:0.5rem">✎ Evento / Uso</div>
+    <input type="text" value="${currentVal}" placeholder="Ej: Le Mans, Compra local..." 
+      style="width:100%;background:#0f172a;border:1px solid rgba(246,144,50,0.4);border-radius:7px;color:#f1f5f9;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none"
+      onkeydown="if(event.key==='Enter')saveEventoCell('${tarjetaId}',this.value,this.closest('.evento-edit-popup'))" />
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="saveEventoCell('${tarjetaId}',this.closest('.evento-edit-popup').querySelector('input').value,this.closest('.evento-edit-popup'))" 
+        style="flex:1;background:#f69032;color:#fff;border:none;border-radius:7px;padding:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>
+      <button onclick="this.closest('.evento-edit-popup').remove()" 
+        style="background:var(--surface2);color:var(--muted);border:none;border-radius:7px;padding:6px;font-size:0.78rem;cursor:pointer">Cancelar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom+2, left = rect.left;
+  if(left+260>window.innerWidth) left=window.innerWidth-270;
+  if(top+120>window.innerHeight) top=rect.top-120;
+  popup.style.top=top+'px'; popup.style.left=left+'px';
+  popup.querySelector('input').focus();
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+async function saveEventoCell(tarjetaId, value, popup) {
+  if(popup) popup.remove();
+  const{error} = await sb.from('tarjetas').update({evento_principal:value}).eq('id',tarjetaId);
+  if(!error){ toast('Evento actualizado ✓'); loadAdminData(); }
+}
+
+// DKV IMPORTE EDIT
+function editDkvImporte(el) {
+  const tarjetaId = el.dataset.tid;
+  document.querySelectorAll('.dkv-imp-popup').forEach(d=>d.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'dkv-imp-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;padding:0.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:200px';
+  popup.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:600;color:#f69032;margin-bottom:0.5rem">DKV/ANDA €</div>
+    <input type="number" placeholder="0.00" min="0" step="0.01" inputmode="decimal"
+      style="width:100%;background:#0f172a;border:1px solid rgba(246,144,50,0.4);border-radius:7px;color:#f1f5f9;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none"
+      onkeydown="if(event.key==='Enter')saveDkvImporte('${tarjetaId}',this.value,this.closest('.dkv-imp-popup'))" />
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="saveDkvImporte('${tarjetaId}',this.closest('.dkv-imp-popup').querySelector('input').value,this.closest('.dkv-imp-popup'))"
+        style="flex:1;background:#f69032;color:#fff;border:none;border-radius:7px;padding:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>
+      <button onclick="this.closest('.dkv-imp-popup').remove()"
+        style="background:var(--surface2);color:var(--muted);border:none;border-radius:7px;padding:6px;font-size:0.78rem;cursor:pointer">Cancelar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom+2, left = rect.left;
+  if(left+220>window.innerWidth) left=window.innerWidth-230;
+  if(top+120>window.innerHeight) top=rect.top-120;
+  popup.style.top=top+'px'; popup.style.left=left+'px';
+  popup.querySelector('input').focus();
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+async function saveDkvImporte(tarjetaId, value, popup) {
+  if(popup) popup.remove();
+  const{error} = await sb.from('tarjetas').update({dkv_importe:parseFloat(value)||0}).eq('id',tarjetaId);
+  if(!error){ toast('DKV/ANDA actualizado ✓'); loadAdminData(); }
+}
+
 // COCHE DROPDOWN
 function showCocheDropdown(el, tarjetaId, currentVal) {
   const coches = ['Sin coche','Vuelo','online','Actros I 7847JFX','Actros I + Man','Actros II 2155HLV','Man 9293MKV','MAN 7.5 9025JRP','Transit 1024NHL','Renault','Vito 1 4671MKZ','GLB 7178LNX','GLC 4187NBS','Coche alquiler','Su coche'];
@@ -1813,6 +1886,79 @@ async function showEmpleadosPopup() {
   `;
   document.body.appendChild(popup);
   setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// EVENTO EDIT
+function editEventoCell(el) {
+  const tarjetaId = el.dataset.tid;
+  const currentVal = el.dataset.val || '';
+  document.querySelectorAll('.evento-edit-popup').forEach(d=>d.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'evento-edit-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;padding:0.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:240px';
+  popup.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:600;color:#f69032;margin-bottom:0.5rem">✎ Evento / Uso</div>
+    <input type="text" value="${currentVal}" placeholder="Ej: Le Mans, Compra local..." 
+      style="width:100%;background:#0f172a;border:1px solid rgba(246,144,50,0.4);border-radius:7px;color:#f1f5f9;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none"
+      onkeydown="if(event.key==='Enter')saveEventoCell('${tarjetaId}',this.value,this.closest('.evento-edit-popup'))" />
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="saveEventoCell('${tarjetaId}',this.closest('.evento-edit-popup').querySelector('input').value,this.closest('.evento-edit-popup'))" 
+        style="flex:1;background:#f69032;color:#fff;border:none;border-radius:7px;padding:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>
+      <button onclick="this.closest('.evento-edit-popup').remove()" 
+        style="background:var(--surface2);color:var(--muted);border:none;border-radius:7px;padding:6px;font-size:0.78rem;cursor:pointer">Cancelar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom+2, left = rect.left;
+  if(left+260>window.innerWidth) left=window.innerWidth-270;
+  if(top+120>window.innerHeight) top=rect.top-120;
+  popup.style.top=top+'px'; popup.style.left=left+'px';
+  popup.querySelector('input').focus();
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+async function saveEventoCell(tarjetaId, value, popup) {
+  if(popup) popup.remove();
+  const{error} = await sb.from('tarjetas').update({evento_principal:value}).eq('id',tarjetaId);
+  if(!error){ toast('Evento actualizado ✓'); loadAdminData(); }
+}
+
+// DKV IMPORTE EDIT
+function editDkvImporte(el) {
+  const tarjetaId = el.dataset.tid;
+  document.querySelectorAll('.dkv-imp-popup').forEach(d=>d.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'dkv-imp-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;padding:0.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:200px';
+  popup.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:600;color:#f69032;margin-bottom:0.5rem">DKV/ANDA €</div>
+    <input type="number" placeholder="0.00" min="0" step="0.01" inputmode="decimal"
+      style="width:100%;background:#0f172a;border:1px solid rgba(246,144,50,0.4);border-radius:7px;color:#f1f5f9;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none"
+      onkeydown="if(event.key==='Enter')saveDkvImporte('${tarjetaId}',this.value,this.closest('.dkv-imp-popup'))" />
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button onclick="saveDkvImporte('${tarjetaId}',this.closest('.dkv-imp-popup').querySelector('input').value,this.closest('.dkv-imp-popup'))"
+        style="flex:1;background:#f69032;color:#fff;border:none;border-radius:7px;padding:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>
+      <button onclick="this.closest('.dkv-imp-popup').remove()"
+        style="background:var(--surface2);color:var(--muted);border:none;border-radius:7px;padding:6px;font-size:0.78rem;cursor:pointer">Cancelar</button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom+2, left = rect.left;
+  if(left+220>window.innerWidth) left=window.innerWidth-230;
+  if(top+120>window.innerHeight) top=rect.top-120;
+  popup.style.top=top+'px'; popup.style.left=left+'px';
+  popup.querySelector('input').focus();
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+async function saveDkvImporte(tarjetaId, value, popup) {
+  if(popup) popup.remove();
+  const{error} = await sb.from('tarjetas').update({dkv_importe:parseFloat(value)||0}).eq('id',tarjetaId);
+  if(!error){ toast('DKV/ANDA actualizado ✓'); loadAdminData(); }
 }
 
 // COCHE DROPDOWN
