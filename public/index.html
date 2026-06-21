@@ -1093,7 +1093,7 @@ async function extractTicketData(file){
         model:'claude-sonnet-4-6',max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
-          {type:'text',text:'Analiza este ticket/factura. Responde SOLO con JSON sin markdown:\n{"fecha":"YYYY-MM-DD o null","proveedor":"nombre del establecimiento o null","lugar":"ciudad o localidad o null","importe":numero o null,"categoria":"comidas|vuelos|trenes|alquiler|hoteles|material|parking|gasoil|otro"}\nReglas categoria: restaurante/bar/cafe=comidas, vuelo/aerolinea=vuelos, tren/taxi/uber=trenes, hotel=hoteles, parking=parking, gasoil/combustible/peaje=gasoil, alquiler coche=alquiler, tienda/material=material.'}
+          {type:'text',text:'Analiza este ticket/factura y responde SOLO con JSON valido: {"fecha":"YYYY-MM-DD","proveedor":"nombre","lugar":"ciudad","importe":0.00,"categoria":"comidas|vuelos|trenes|alquiler|hoteles|material|parking|gasoil|otro"}. Sin texto extra.'}
         ]}]
       })
     });
@@ -1288,12 +1288,359 @@ async function extractAdminTicketData(file) {
       headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,messages:[{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
-        {type:'text',text:'Analiza este ticket/factura. Responde SOLO con JSON sin markdown:
-{"fecha":"YYYY-MM-DD o null","proveedor":"nombre o null","lugar":"ciudad o localidad o null","importe":numero o null,"categoria":"comidas|vuelos|trenes|alquiler|hoteles|material|parking|gasoil|otro"}
-Reglas categoria: restaurante/bar/cafe=comidas, vuelo/aerolinea=vuelos, tren/taxi/uber=trenes, hotel=hoteles, parking=parking, gasoil/combustible/peaje=gasoil, alquiler coche=alquiler, tienda/material=material.'}
+        {type:'text',text:'Analiza el ticket. Responde ONLY JSON: {fecha,proveedor,lugar,importe,categoria}'}
       ]}]})
     });
     const data = await response.json();
+    const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,'').trim()||'{}');
+    document.getElementById('ag-ai-loading')?.remove();
+    let filled=[];
+    if(parsed.fecha){document.getElementById('ag-fecha').value=parsed.fecha;filled.push('fecha');}
+    if(parsed.proveedor){document.getElementById('ag-desc').value=parsed.proveedor;filled.push('proveedor');}
+    if(parsed.importe){document.getElementById('ag-monto').value=parsed.importe;filled.push('importe');}
+    if(parsed.categoria){document.getElementById('ag-cat').value=parsed.categoria;filled.push('categoría');}
+    if(parsed.lugar){document.getElementById('ag-lugar').value=parsed.lugar;filled.push('lugar');}
+    if(filled.length>0) row.innerHTML+=`<div style="margin-top:6px;background:rgba(34,211,163,0.1);border:1px solid rgba(34,211,163,0.3);border-radius:6px;padding:5px 10px;font-size:0.75rem;color:var(--success)">✓ IA detectó: ${filled.join(', ')}</div>`;
+  } catch(err) {
+    document.getElementById('ag-ai-loading')?.remove();
+  }
+}
+
+async function saveAdminGasto() {
+  const tarjetaId = document.getElementById('ag-tarjeta').value;
+  const fecha = document.getElementById('ag-fecha').value;
+  const desc = document.getElementById('ag-desc').value.trim();
+  const monto = parseFloat(document.getElementById('ag-monto').value);
+  const cat = document.getElementById('ag-cat').value;
+  const evento = document.getElementById('ag-evento').value.trim();
+  const lugar = document.getElementById('ag-lugar').value.trim();
+  if(!tarjetaId||!fecha||!desc||!monto||monto<=0){showError('ag-error','Selecciona tarjeta, rellena fecha, descripción e importe');return;}
+  const btn = document.getElementById('btn-save-ag');
+  setLoading(btn,true);
+  let ticket_url = null;
+  if(adminGastoTicketFile){
+    const ext=adminGastoTicketFile.name.split('.').pop();
+    const path=`${currentUser.id}/${Date.now()}.${ext}`;
+    const{error:upErr}=await sb.storage.from('tickets').upload(path,adminGastoTicketFile);
+    if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
+  }
+  const{error}=await sb.from('gastos').insert({tarjeta_id:tarjetaId,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,lugar,ticket_url});
+  setLoading(btn,false);
+  if(error){showError('ag-error',error.message);return;}
+  closeSheet('sheet-admin-gasto');
+  ['ag-desc','ag-monto','ag-evento','ag-lugar'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ag-thumb-row').innerHTML='';
+  adminGastoTicketFile=null;
+  toast('Gasto añadido ✓');
+  loadAdminData();
+}
+
+// TARJETAS ACTIVAS POPUP
+async function showTarjetasPopup() {
+  document.querySelectorAll('.tarjetas-popup').forEach(p=>p.remove());
+  
+  const activas = _allTarjetas.filter(t=>t.activa&&!t.fecha_devolucion);
+  
+  const popup = document.createElement('div');
+  popup.className = 'tarjetas-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:270px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);top:50%;left:50%;transform:translate(-50%,-50%);max-height:80dvh;overflow-y:auto';
+  
+  popup.innerHTML = `
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0">
+      <div style="font-weight:700;color:#f69032;font-size:0.85rem">💳 Tarjetas activas (${activas.length})</div>
+      <span onclick="this.closest('.tarjetas-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${activas.length===0?'<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.85rem">No hay tarjetas activas</div>':
+    activas.map(t=>{
+      const gastado = _allGastos.filter(g=>g.tarjeta_id===t.id&&g.fecha&&g.fecha.startsWith(_currentMonth||'')).reduce((s,g)=>s+parseFloat(g.monto),0);
+      const initials = t.nombre_titular.split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
+      return `<div style="display:flex;align-items:center;gap:0.65rem;padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.85rem;font-weight:600;color:#f1f5f9">${t.nombre_titular}</div>
+          <div style="font-size:0.7rem;color:#94a3b8">···· ${t.digitos} · Entregada ${fmtDate(t.fecha_entrega)}</div>
+          ${t.evento_principal?`<div style="font-size:0.68rem;color:#64748b">${esc(t.evento_principal)}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:0.85rem;font-weight:700;color:#f9a84d">${gastado>0?gastado.toFixed(2)+' €':'—'}</div>
+          <div style="font-size:0.62rem;color:#94a3b8">este mes</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+  
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// TOTAL GASTADO POPUP
+async function showTotalPopup() {
+  document.querySelectorAll('.total-popup').forEach(p=>p.remove());
+  
+  // Get gastos for current month grouped by responsable
+  const month = _currentMonth || new Date().toISOString().slice(0,7);
+  const mGastos = _allGastos.filter(g=>g.fecha&&g.fecha.startsWith(month));
+  
+  // Group by tarjeta
+  const byTarjeta = {};
+  mGastos.forEach(g=>{
+    const t = _allTarjetas.find(x=>x.id===g.tarjeta_id);
+    const nombre = t ? t.nombre_titular : 'Sin asignar';
+    if(!byTarjeta[nombre]) byTarjeta[nombre] = {total:0, gastos:[], hasTicket:0, noTicket:0};
+    byTarjeta[nombre].total += parseFloat(g.monto);
+    byTarjeta[nombre].gastos.push(g);
+    if(g.ticket_url) byTarjeta[nombre].hasTicket++;
+    else byTarjeta[nombre].noTicket++;
+  });
+  
+  const sorted = Object.entries(byTarjeta).sort((a,b)=>b[1].total-a[1].total);
+  const grandTotal = sorted.reduce((s,[,v])=>s+v.total,0);
+  
+  const[y,mo] = month.split('-');
+  const mLabel = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(mo)-1]+' '+y;
+  
+  const popup = document.createElement('div');
+  popup.className = 'total-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:280px;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,0.4);top:50%;left:50%;transform:translate(-50%,-50%);max-height:80dvh;overflow-y:auto';
+  
+  popup.innerHTML = `
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0">
+      <div>
+        <div style="font-weight:700;color:#f69032;font-size:0.85rem">💶 Total por responsable</div>
+        <div style="font-size:0.7rem;color:#94a3b8">${mLabel}</div>
+      </div>
+      <span onclick="this.closest('.total-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${sorted.map(([nombre, data])=>{
+      const pct = grandTotal > 0 ? (data.total/grandTotal*100) : 0;
+      const initials = nombre.split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
+      return `<div style="padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:5px">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(246,144,50,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#f69032;flex-shrink:0">${initials}</div>
+          <div style="flex:1">
+            <div style="font-size:0.85rem;font-weight:600;color:#f1f5f9">${nombre}</div>
+            <div style="font-size:0.68rem;color:#94a3b8">${data.gastos.length} gasto${data.gastos.length!==1?'s':''} · ${data.hasTicket>0?'<span style="color:var(--success)">📎 '+data.hasTicket+'</span>':''} ${data.noTicket>0?'<span style="color:var(--danger)">⚠️ '+data.noTicket+'</span>':''}</div>
+          </div>
+          <div style="font-size:0.95rem;font-weight:700;color:#f9a84d">${data.total.toFixed(2)} €</div>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px">
+          <div style="height:4px;background:#f69032;border-radius:2px;width:${pct.toFixed(1)}%"></div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="padding:0.75rem 1rem;display:flex;justify-content:space-between;font-weight:700;color:#f9a84d;font-size:0.9rem;background:rgba(246,144,50,0.05)">
+      <span>TOTAL ${mLabel}</span>
+      <span>${grandTotal.toFixed(2)} €</span>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// EMPLEADOS POPUP
+async function showEmpleadosPopup() {
+  document.querySelectorAll('.empleados-popup').forEach(p=>p.remove());
+  const{data:empleados}=await sb.from('profiles').select('id,name,email,is_admin').order('name');
+  const popup=document.createElement('div');
+  popup.className='empleados-popup';
+  popup.style.cssText='position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;max-height:400px;overflow-y:auto;top:50%;left:50%;transform:translate(-50%,-50%)';
+  popup.innerHTML=`
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;color:#f69032;font-size:0.85rem">👥 Empleados registrados</span>
+      <span onclick="this.closest('.empleados-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${(empleados||[]).map(e=>`
+      <div style="display:flex;align-items:center;gap:0.65rem;padding:0.7rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="width:32px;height:32px;border-radius:50%;background:${e.is_admin?'rgba(246,144,50,0.2)':'rgba(99,102,241,0.2)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${e.is_admin?'#f69032':'#818cf8'};flex-shrink:0">
+          ${(e.name||e.email||'?')[0].toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.82rem;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name||'Sin nombre'}</div>
+          <div style="font-size:0.7rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.email}</div>
+        </div>
+        ${e.is_admin?'<span style="background:rgba(246,144,50,0.2);color:#f69032;border-radius:20px;padding:2px 7px;font-size:0.6rem;font-weight:700;flex-shrink:0">Admin</span>':''}
+      </div>`).join('')}
+  `;
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// COCHE DROPDOWN
+function showCocheDropdown(el, tarjetaId, currentVal) {
+  const coches = ['Sin coche','Vuelo','online','Actros I 7847JFX','Actros I + Man','Actros II 2155HLV','Man 9293MKV','MAN 7.5 9025JRP','Transit 1024NHL','Renault','Vito 1 4671MKZ','GLB 7178LNX','GLC 4187NBS','Coche alquiler','Su coche'];
+  showInlineDropdown(el, coches, currentVal, 'coche-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({coche:val}).eq('id',tarjetaId);
+    toast('Coche actualizado ✓');loadAdminData();
+  });
+}
+
+// RESPONSABLE DROPDOWN
+function showResponsableDropdown(el, tarjetaId, currentVal) {
+  currentVal = el.dataset.n || currentVal;
+  const responsables = ['Julien','Vanina','Tatiana','Agustin','Noemie','Florin','Pierre','Gabriel','Leandre','Antonio','Franco','Ruben','Daniel','Philippe','Christian','Alberto','Leku','Raul','Imano','Tomas','Laura'];
+  showInlineDropdown(el, responsables, currentVal, 'resp-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({nombre_titular:val}).eq('id',tarjetaId);
+    toast('Responsable actualizado ✓');loadAdminData();
+  });
+}
+
+// DATE PICKER
+function openDatePicker(el, tarjetaId, field, currentVal, label) {
+  document.querySelectorAll('.date-picker-popup').forEach(d=>d.remove());
+  
+  const popup = document.createElement('div');
+  popup.className = 'date-picker-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;padding:0.75rem;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:220px';
+  
+  popup.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:600;color:#f69032;margin-bottom:0.5rem">${label}</div>
+    <input type="date" value="${currentVal}" style="width:100%;background:#0f172a;border:1px solid rgba(246,144,50,0.4);border-radius:7px;color:#f1f5f9;font-size:0.88rem;padding:0.5rem 0.75rem;outline:none" 
+      onchange="saveDateField('${tarjetaId}','${field}',this.value,this.closest('.date-picker-popup'))" />
+    ${field==='fecha_devolucion'?`<button onclick="saveDateField('${tarjetaId}','${field}',null,this.closest('.date-picker-popup'))" style="margin-top:6px;width:100%;background:rgba(248,113,113,0.15);color:var(--danger);border:1px solid rgba(248,113,113,0.3);border-radius:7px;padding:5px;font-size:0.75rem;cursor:pointer">Quitar devolución</button>`:''}
+    <button onclick="this.closest('.date-picker-popup').remove()" style="margin-top:6px;width:100%;background:var(--surface2);color:var(--muted);border:none;border-radius:7px;padding:5px;font-size:0.75rem;cursor:pointer">Cancelar</button>
+  `;
+  
+  document.body.appendChild(popup);
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom+2, left = rect.left;
+  if(left+240>window.innerWidth) left=window.innerWidth-250;
+  if(top+180>window.innerHeight) top=rect.top-180;
+  popup.style.top=top+'px'; popup.style.left=left+'px';
+  
+  // Auto open date picker
+  setTimeout(()=>popup.querySelector('input[type=date]').showPicker?.(),100);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+async function saveDateField(tarjetaId, field, value, popup) {
+  if(popup) popup.remove();
+  const update = {};
+  update[field] = value || null;
+  const{error} = await sb.from('tarjetas').update(update).eq('id',tarjetaId);
+  if(!error){ toast('Fecha actualizada ✓'); loadAdminData(); }
+}
+
+// ANDAMUR DROPDOWN
+function showAndamurDropdown(el, tarjetaId, currentVal) {
+  document.querySelectorAll('.andamur-dropdown').forEach(d=>d.remove());
+  const cards = ['SIN','Actros I 7847JFX','Actros II 2155HLV','Man 9293MKV','MAN 7.5 9025JRP','Transit 1024NHL','Renault 4194NCF','Vito 1 4671MKZ','GLB 7178LNX','GLC 4187NBS'];
+  showInlineDropdown(el, cards, currentVal, 'andamur-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({andamur:val}).eq('id',tarjetaId);
+    toast('Andamur actualizado ✓');loadAdminData();
+  });
+}
+
+// DKV DROPDOWN
+function showDkvDropdown(el, tarjetaId, currentVal) {
+  document.querySelectorAll('.dkv-dropdown').forEach(d=>d.remove());
+  const cards = ['SIN','DKV Julien','DKV Tomas','DKV Christian','DKV Alberto','DKV Laura','DKV Pierre','DKV Gabriel','DKV Florin'];
+  showInlineDropdown(el, cards, currentVal, 'dkv-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({dkv:val}).eq('id',tarjetaId);
+    toast('DKV actualizado ✓');loadAdminData();
+  });
+}
+
+// GENERIC INLINE DROPDOWN
+function showInlineDropdown(el, options, currentVal, className, onSelect) {
+  document.querySelectorAll('.'+className).forEach(d=>d.remove());
+  const dropdown = document.createElement('div');
+  dropdown.className = className;
+  dropdown.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;max-height:280px;overflow-y:auto';
+  dropdown.innerHTML = options.map(c=>`
+    <div class="dd-opt" style="padding:8px 14px;font-size:0.8rem;cursor:pointer;color:${c===currentVal?'#f69032':'#f1f5f9'};font-weight:${c===currentVal?'700':'400'};background:${c===currentVal?'rgba(246,144,50,0.1)':'transparent'}"
+      onmouseover="this.style.background='rgba(246,144,50,0.1)'" onmouseout="this.style.background='${c===currentVal?'rgba(246,144,50,0.1)':'transparent'}'">
+      ${c===currentVal?'✓ ':''}${c}
+    </div>`).join('');
+  dropdown.querySelectorAll('.dd-opt').forEach((opt,i)=>{
+    opt.addEventListener('click', (e)=>{e.stopPropagation();dropdown.remove();onSelect(options[i]);});
+  });
+  document.body.appendChild(dropdown);
+  const rect=el.getBoundingClientRect();
+  let top=rect.bottom+2,left=rect.left;
+  if(left+200>window.innerWidth)left=window.innerWidth-190;
+  if(top+300>window.innerHeight)top=rect.top-290;
+  dropdown.style.top=top+'px';dropdown.style.left=left+'px';
+  setTimeout(()=>{document.addEventListener('click',()=>dropdown.remove(),{once:true});},10);
+}
+
+// TITULAR MC DROPDOWN
+function showTitularDropdown(el, tarjetaId, currentVal) {
+  const mcCards = ['5031 Julien','8025 Vanina','9018 Andreea','2015 Agustin','1015 Noemie','1012 Florin','8011 Pierre','7039 Gabriel','6013 Leandre','7024 Antonio','9016 Franco','0304 Ruben','9556 Daniel','2494 Philippe','7414 Christian','7380 Alberto'];
+  showInlineDropdown(el, mcCards, currentVal, 'titular-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({titular:val}).eq('id',tarjetaId);
+    toast('Titular MC actualizado ✓');loadAdminData();
+  });
+}
+
+// IMPORTE DETAIL POPUP
+function showImporteDetail(el, cat, tarjetaId) {
+  // Remove existing popup
+  document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+  
+  const gastos = _allGastos.filter(g=>g.tarjeta_id===tarjetaId && g.categoria===cat);
+  if(!gastos.length) return;
+  
+  const CAT_NAMES = {comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil'};
+  
+  const popup = document.createElement('div');
+  popup.className = 'importe-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;padding:0.75rem;z-index:500;min-width:220px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-size:0.78rem';
+  
+  popup.innerHTML = `
+    <div style="font-weight:700;color:#f69032;margin-bottom:0.5rem;font-size:0.8rem">${CAT_NAMES[cat]||cat}</div>
+    ${gastos.map(g=>`
+      <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;justify-content:space-between;gap:0.5rem">
+          <span style="color:#f1f5f9;font-weight:600;flex:1">${esc(g.descripcion)}</span>
+          <span style="color:${g.ticket_url?'#22d3a3':'#f87171'};font-weight:700;white-space:nowrap">${parseFloat(g.monto).toFixed(2)} € ${g.ticket_url?`<span onclick="event.stopPropagation();viewTicket('${g.ticket_url}')" style="cursor:pointer;font-size:1rem" title="Ver ticket">📎</span>`:'⚠️'}</span>
+        </div>
+        ${g.lugar?`<div style="color:#94a3b8;font-size:0.7rem;margin-top:2px">📍 ${esc(g.lugar)}</div>`:''}
+        ${g.fecha?`<div style="color:#64748b;font-size:0.68rem">${fmtDate(g.fecha)}</div>`:''}
+      </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;padding-top:6px;font-weight:700;color:#f9a84d">
+      <span>Total</span>
+      <span>${gastos.reduce((s,g)=>s+parseFloat(g.monto),0).toFixed(2)} €</span>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Position near clicked element
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+  
+  // Keep within viewport
+  if(left + 300 > window.innerWidth) left = window.innerWidth - 310;
+  if(top + 200 > window.innerHeight) top = rect.top - popup.offsetHeight - 4;
+  
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+  
+  // Close on click outside
+  setTimeout(()=>{
+    document.addEventListener('click', ()=>{
+      document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+    }, {once:true});
+  }, 10);
+}
+
+// UTILS
+function openSheet(id){document.getElementById(id).classList.add('open');}
+function closeSheet(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.sheet-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+function setLoading(btn,on){if(on){btn._txt=btn.innerHTML;btn.innerHTML='<div class="spinner"></div>';btn.disabled=true;}else{btn.innerHTML=btn._txt||btn.innerHTML;btn.disabled=false;}}
+function showError(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.remove('hidden');setTimeout(()=>e.classList.add('hidden'),4000);}
+function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2800);}
+function viewTicket(url){document.getElementById('ticket-modal-img').src=url;document.getElementById('ticket-modal').classList.add('open');}
+function closeTicket(){document.getElementById('ticket-modal').classList.remove('open');}
+function hoy(){return new Date().toISOString().split('T')[0];}
+function fmtDate(d){if(!d)return'—';return new Date(d+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>text:\'Analiza el ticket y responde SOLO JSON: {fecha,proveedor,lugar,importe,categoria}\'}\n      ]}]})\n    });\n    const data = await response.json();
     const parsed = JSON.parse(data.content?.[0]?.text?.replace(/```json|```/g,'').trim()||'{}');
     document.getElementById('ag-ai-loading')?.remove();
     let filled=[];
