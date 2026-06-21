@@ -175,6 +175,8 @@
               <button class="btn btn-primary btn-sm" id="btn-add-gasto" onclick="openGastoSheet()" style="display:none">+ Gasto</button>
             </div>
           </div>
+          <!-- EMPLOYEE CATEGORY TOTALS -->
+          <div class="cat-totals-wrap" id="emp-cat-totals" style="margin-bottom:0.75rem"></div>
           <div class="card">
             <div id="emp-gastos-list"><div class="empty">Añade tu primer gasto</div></div>
             <div id="emp-total" class="hidden" style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-weight:700;margin-top:4px"><span>Total</span><span id="emp-total-val"></span></div>
@@ -598,6 +600,39 @@ async function loadEmpleadoData(){
 }
 
 function renderGastosEmpleado(gastos){
+  // Render employee category totals
+  const catWrap = document.getElementById('emp-cat-totals');
+  if(catWrap && gastos.length > 0) {
+    const cats = [
+      {key:'comidas',icon:'🍽',name:'Comidas'},{key:'vuelos',icon:'✈️',name:'Vuelos'},
+      {key:'trenes',icon:'🚆',name:'Trenes'},{key:'alquiler',icon:'🚗',name:'Alquiler'},
+      {key:'hoteles',icon:'🏨',name:'Hoteles'},{key:'material',icon:'📦',name:'Material'},
+      {key:'parking',icon:'🅿️',name:'Parking'},{key:'gasoil',icon:'⛽',name:'Gasoil'},
+    ];
+    const grandTotal = gastos.reduce((s,g)=>s+parseFloat(g.monto),0);
+    catWrap.innerHTML = `
+      <div class="cat-total-card active" style="border-color:#f69032;background:rgba(246,144,50,0.08);min-width:90px">
+        <div class="cat-total-icon">📋</div>
+        <div class="cat-total-name">Total</div>
+        <div class="cat-total-val" style="color:#f9a84d">${grandTotal.toFixed(2)} €</div>
+      </div>
+      ${cats.map(c=>{
+        const cg=gastos.filter(g=>g.categoria===c.key);
+        const total=cg.reduce((s,g)=>s+parseFloat(g.monto),0);
+        const allOk=cg.length>0&&cg.every(g=>g.ticket_url);
+        const anyMissing=cg.some(g=>!g.ticket_url);
+        const valClass=total===0?'':allOk?'green':anyMissing?'red':'';
+        return total>0?`<div class="cat-total-card" onclick="showEmpCatDetail('${c.key}','all')">
+          <div class="cat-total-icon">${c.icon}</div>
+          <div class="cat-total-name">${c.name}</div>
+          <div class="cat-total-val ${valClass}">${total.toFixed(2)} €</div>
+        </div>`:'';
+      }).join('')}
+    `;
+  } else if(catWrap) {
+    catWrap.innerHTML = '';
+  }
+
   const list=document.getElementById('emp-gastos-list');
   if(!gastos.length){list.innerHTML='<div class="empty">Añade tu primer gasto</div>';return;}
   
@@ -740,7 +775,7 @@ function renderEmpTabla(t, gastos) {
 // Employee category detail popup
 function showEmpCatDetail(cat, month) {
   const gastos=_empGastos||[];
-  const cg=gastos.filter(g=>g.categoria===cat&&g.fecha&&g.fecha.startsWith(month));
+  const cg=month==='all'?gastos.filter(g=>g.categoria===cat):gastos.filter(g=>g.categoria===cat&&g.fecha&&g.fecha.startsWith(month));
   if(!cg.length)return;
   const CAT_NAMES={comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil',otro:'Otro'};
   document.querySelectorAll('.emp-cat-popup').forEach(p=>p.remove());
