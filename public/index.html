@@ -883,7 +883,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="color:var(--muted);font-size:0.68rem">${esc(t.evento_principal||'')}</td>
       ${CAT_COLS.map((cat,i)=>{
         const v=vals[i];
-        if(v<=0)return`<td class="num" style="color:var(--border)">—</td>`;
+        if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" onclick="event.stopPropagation();openAdminGastoSheetWith('${t.id}','${cat}')">+</td>`;
         const hasT=catHasTicket(cat);
         const noT=catHasMissing(cat);
         const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
@@ -1254,12 +1254,19 @@ async function exportarExcel(){
 let adminGastoTicketFile = null;
 
 function openAdminGastoSheet() {
+  openAdminGastoSheetWith(null, null);
+}
+
+function openAdminGastoSheetWith(tarjetaId, cat) {
   const sel = document.getElementById('ag-tarjeta');
   sel.innerHTML = '<option value="">Selecciona tarjeta...</option>' + 
-    _allTarjetas.filter(t=>t.activa).map(t=>`<option value="${t.id}">${t.nombre_titular} ···· ${t.digitos}</option>`).join('');
+    _allTarjetas.map(t=>`<option value="${t.id}">${t.nombre_titular} ···· ${t.digitos}</option>`).join('');
+  if(tarjetaId) sel.value = tarjetaId;
+  if(cat) document.getElementById('ag-cat').value = cat;
   document.getElementById('ag-fecha').value = hoy();
   adminGastoTicketFile = null;
   document.getElementById('ag-thumb-row').innerHTML = '';
+  ['ag-desc','ag-monto','ag-evento','ag-lugar'].forEach(id=>document.getElementById(id).value='');
   openSheet('sheet-admin-gasto');
 }
 
