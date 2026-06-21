@@ -193,12 +193,12 @@
                 <tr><th colspan="18">REGISTRO DE TARJETAS — EVENTOS/LOCAL</th></tr>
                 <tr>
                   <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
-                  <th>Comidas €</th><th>Vuelos €</th><th>Trenes €</th><th>Alquiler €</th>
-                  <th>Hoteles €</th><th>Material €</th><th>Parking €</th><th>Gasoil €</th>
-                  <th>TOTAL</th><th>Andamur</th><th>DKV</th><th>F. DEVOLUCIÓN</th><th></th>
+                  <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
+                  <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
+                  <th>TOTAL</th><th>NR. MC</th><th>NR. DKV/Andamur</th><th>DKV/ANDA</th><th>F. DEVOLUCIÓN</th><th></th>
                 </tr>
               </thead>
-              <tbody id="tabla-body"><tr><td colspan="18"><div class="empty">No hay datos</div></td></tr></tbody>
+              <tbody id="tabla-body"><tr><td colspan="20"><div class="empty">No hay datos</div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -236,6 +236,7 @@
       <div class="form-group"><label class="form-label">Importe (€)</label><input type="number" id="g-monto" placeholder="0.00" min="0" step="0.01" inputmode="decimal"/></div>
       <div class="form-group"><label class="form-label">Evento / Uso</label><input type="text" id="g-evento" placeholder="Ej: Le Mans..."/></div>
     </div>
+    <div class="form-group"><label class="form-label">Lugar / Establecimiento</label><input type="text" id="g-lugar" placeholder="Ej: Pizza del Arte · St Saturnin"/></div>
     <div class="form-group">
       <label class="form-label">📷 Foto del ticket / factura</label>
       <div class="upload-zone" onclick="document.getElementById('g-ticket').click()">Toca para fotografiar o subir ticket<br><span style="font-size:0.7rem;color:var(--accent-light)">La IA leerá los datos automáticamente</span></div>
@@ -290,14 +291,23 @@
       <div class="form-group"><label class="form-label">Últimos 4 dígitos</label><input type="text" id="a-digitos" placeholder="9018" maxlength="4" inputmode="numeric"/></div>
       <div class="form-group"><label class="form-label">Fecha de entrega</label><input type="date" id="a-fecha"/></div>
     </div>
+    <div class="form-group">
+      <label class="form-label">Tarjeta MC (desplegable)</label>
+      <select id="a-tarjeta-mc"><option value="">Selecciona tarjeta MC...</option></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tarjeta DKV/Andamur (desplegable)</label>
+      <select id="a-tarjeta-dkv"><option value="">Selecciona tarjeta DKV/Andamur...</option></select>
+    </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Coche</label><input type="text" id="a-coche" placeholder="Vito, Actros..."/></div>
       <div class="form-group"><label class="form-label">Evento</label><input type="text" id="a-evento" placeholder="Le Mans..."/></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">NR. Andamur</label><input type="text" id="a-andamur" placeholder="SIN"/></div>
-      <div class="form-group"><label class="form-label">NR. DKV</label><input type="text" id="a-dkv" placeholder="SIN"/></div>
+      <div class="form-group"><label class="form-label">NR. DKV/Andamur</label><input type="text" id="a-dkv" placeholder="SIN"/></div>
     </div>
+    <div class="form-group"><label class="form-label">Importe DKV/Andamur</label><input type="number" id="a-dkv-importe" placeholder="0.00" min="0" step="0.01" inputmode="decimal"/></div>
     <div id="a-error" class="form-error hidden"></div>
     <button class="btn btn-primary" id="btn-save-asignar" onclick="saveAsignar()">Asignar tarjeta</button>
     <button class="btn btn-ghost" onclick="closeSheet('sheet-asignar')">Cancelar</button>
@@ -332,8 +342,9 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">NR. Andamur</label><input type="text" id="m-andamur" placeholder="SIN"/></div>
-      <div class="form-group"><label class="form-label">NR. DKV</label><input type="text" id="m-dkv" placeholder="SIN"/></div>
+      <div class="form-group"><label class="form-label">NR. DKV/Andamur</label><input type="text" id="m-dkv" placeholder="SIN"/></div>
     </div>
+    <div class="form-group"><label class="form-label">Importe DKV/Andamur</label><input type="number" id="m-dkv-importe" placeholder="0.00" min="0" step="0.01" inputmode="decimal"/></div>
     <div id="m-error" class="form-error hidden"></div>
     <button class="btn btn-primary" id="btn-save-manual" onclick="saveManual()">Guardar fila</button>
     <button class="btn btn-ghost" onclick="closeSheet('sheet-manual')">Cancelar</button>
@@ -676,11 +687,17 @@ function renderTablaForMonth(month,tarjetas,gastos){
         const noT=catHasMissing(cat);
         const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
         const bg=hasT&&!noT?'rgba(34,211,163,0.08)':noT?'rgba(248,113,113,0.08)':'transparent';
-        return`<td class="num" style="color:${color};background:${bg};font-weight:700">${v.toFixed(2)}</td>`;
+        const catGastos=tG.filter(g=>g.categoria===cat);
+        const tooltip=catGastos.map(g=>`${esc(g.descripcion)}: ${parseFloat(g.monto).toFixed(2)}€`).join('&#10;');
+        const clickFn=catGastos.length>0?`onclick="event.stopPropagation();showImporteDetail(this,'${cat}','${t.id}')"`:'' ;
+        return`<td class="num" style="color:${color};background:${bg};font-weight:700;${catGastos.length>0?'cursor:pointer;':''}" title="${tooltip}" ${clickFn}>${v.toFixed(2)}</td>`;
       }).join('')}
       <td class="total-cell">${total.toFixed(2)} €</td>
       <td style="font-size:0.68rem;color:var(--muted)">${esc(t.andamur||'SIN')}</td>
       <td style="font-size:0.68rem;color:var(--muted)">${esc(t.dkv||'SIN')}</td>
+      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.digitos ? t.digitos+' '+t.nombre_titular : '—')}</td>
+      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:t.andamur&&t.andamur!=='SIN'?t.andamur:'—')}</td>
+      <td class="num" style="color:var(--muted);font-size:0.68rem">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'—'}</td>
       <td>${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
@@ -699,7 +716,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
         <td style="color:var(--muted);font-size:0.65rem">${g.evento||''}</td>
         ${gcols.join('')}
         <td class="num" style="color:${gColor};font-weight:700">${parseFloat(g.monto).toFixed(2)}</td>
-        <td colspan="2">${g.ticket_url?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light)">ver</a>`:''}</td>
+        <td colspan="4">${g.ticket_url?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light)">ver</a>`:''}</td>
         <td></td>
         <td style="white-space:nowrap">
           <button onclick="event.stopPropagation();editGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem;margin-right:2px">✏️</button>
@@ -820,11 +837,12 @@ async function saveGasto(){
     const{error:upErr}=await sb.storage.from('tickets').upload(path,gastoTicketFile);
     if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
   }
-  const{error}=await sb.from('gastos').insert({tarjeta_id:miTarjeta.id,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,ticket_url});
+  const lugar=document.getElementById('g-lugar').value.trim();
+  const{error}=await sb.from('gastos').insert({tarjeta_id:miTarjeta.id,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,ticket_url,lugar});
   setLoading(btn,false);
   if(error){showError('g-error',error.message);return;}
   closeSheet('sheet-gasto');
-  ['g-desc','g-monto','g-evento'].forEach(id=>document.getElementById(id).value='');
+  ['g-desc','g-monto','g-evento','g-lugar'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('g-thumb-row').innerHTML='';
   document.getElementById('g-ticket').value='';
   gastoTicketFile=null;
@@ -851,7 +869,7 @@ async function extractTicketData(file){
         model:'claude-sonnet-4-6',max_tokens:400,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:base64}},
-          {type:'text',text:'Analiza este ticket/factura. Responde SOLO con JSON sin markdown:\n{"fecha":"YYYY-MM-DD o null","proveedor":"nombre o null","importe":numero o null,"categoria":"comidas|vuelos|trenes|alquiler|hoteles|material|parking|gasoil|otro"}\nReglas categoria: restaurante/bar/cafe=comidas, vuelo/aerolinea=vuelos, tren/taxi/uber=trenes, hotel=hoteles, parking=parking, gasoil/combustible/peaje=gasoil, alquiler coche=alquiler, tienda/material=material.'}
+          {type:'text',text:'Analiza este ticket/factura. Responde SOLO con JSON sin markdown:\n{"fecha":"YYYY-MM-DD o null","proveedor":"nombre del establecimiento o null","lugar":"ciudad o localidad o null","importe":numero o null,"categoria":"comidas|vuelos|trenes|alquiler|hoteles|material|parking|gasoil|otro"}\nReglas categoria: restaurante/bar/cafe=comidas, vuelo/aerolinea=vuelos, tren/taxi/uber=trenes, hotel=hoteles, parking=parking, gasoil/combustible/peaje=gasoil, alquiler coche=alquiler, tienda/material=material.'}
         ]}]
       })
     });
@@ -864,6 +882,7 @@ async function extractTicketData(file){
     if(parsed.proveedor){document.getElementById('g-desc').value=parsed.proveedor;filled.push('proveedor');}
     if(parsed.importe){document.getElementById('g-monto').value=parsed.importe;filled.push('importe');}
     if(parsed.categoria){document.getElementById('g-cat').value=parsed.categoria;filled.push('categoría');}
+    if(parsed.lugar){document.getElementById('g-lugar').value=parsed.lugar;filled.push('lugar');}
     if(filled.length>0){
       row.innerHTML+=`<div style="margin-top:6px;background:rgba(34,211,163,0.1);border:1px solid rgba(34,211,163,0.3);border-radius:6px;padding:5px 10px;font-size:0.75rem;color:var(--success)">✓ IA detectó: ${filled.join(', ')}</div>`;
     }else{
@@ -876,7 +895,40 @@ async function extractTicketData(file){
 }
 
 // ASIGNAR
-function openAsignarSheet(){openSheet('sheet-asignar');}
+function openAsignarSheet(){
+  // Populate MC cards dropdown
+  const mcSelect = document.getElementById('a-tarjeta-mc');
+  const dkvSelect = document.getElementById('a-tarjeta-dkv');
+  
+  // MC tarjetas list
+  const mcCards = [
+    '5031 Julien','8025 Vanina','9018 Andreea','2015 Agustin','1015 Noemie',
+    '1012 Florin','8011 Pierre','7039 Gabriel','6013 Leandre','7024 Antonio',
+    '9016 Franco','0304 Ruben','9556 Daniel','2494 Philippe','7414 Christian',
+    '7380 Alberto'
+  ];
+  
+  const dkvCards = [
+    'DKV Julien','DKV Tomas','DKV Christian','DKV Alberto','DKV Laura',
+    'DKV Pierre','DKV Gabriel','DKV Florin','SIN'
+  ];
+  
+  const andamurCards = [
+    'SIN','Actros I 7847JFX','Actros II 2155HLV','Man 9293MKV','MAN 7.5 9025JRP',
+    'Transit 1024NHL','Renault 4194NCF','Vito 1 4671MKZ','GLB 7178LNX','GLC 4187NBS'
+  ];
+  
+  mcSelect.innerHTML = '<option value="">Selecciona NR. MC...</option>' + mcCards.map(c=>`<option value="${c}">${c}</option>`).join('');
+  dkvSelect.innerHTML = '<option value="">Selecciona DKV/Andamur...</option>' + dkvCards.map(c=>`<option value="${c}">${c}</option>`).join('');
+  
+  // Also populate andamur select if exists
+  const andSelect = document.getElementById('a-andamur');
+  if(andSelect && andSelect.tagName==='SELECT') andSelect.innerHTML = andamurCards.map(c=>`<option value="${c}">${c}</option>`).join('');
+  
+
+  
+  openSheet('sheet-asignar');
+}
 async function saveAsignar(){
   const email=document.getElementById('a-email').value.trim().toLowerCase();
   const digitos=document.getElementById('a-digitos').value.trim();
@@ -890,7 +942,10 @@ async function saveAsignar(){
   const btn=document.getElementById('btn-save-asignar');setLoading(btn,true);
   const{data:perfil}=await sb.from('profiles').select('id,name').eq('email',email).maybeSingle();
   if(!perfil){showError('a-error','Empleado no encontrado. Debe haberse registrado primero.');setLoading(btn,false);return;}
-  const{error}=await sb.from('tarjetas').insert({empleado_id:perfil.id,nombre_titular:perfil.name||email,digitos,fecha_entrega:fecha,evento_principal:evento,coche,andamur,dkv,activa:true,limite_mensual:0});
+  const dkvImporte=parseFloat(document.getElementById('a-dkv-importe').value)||0;
+  const mcCard=document.getElementById('a-tarjeta-mc').value||'';
+  const dkvCard=document.getElementById('a-tarjeta-dkv').value||dkv;
+  const{error}=await sb.from('tarjetas').insert({empleado_id:perfil.id,nombre_titular:perfil.name||email,digitos,fecha_entrega:fecha,evento_principal:evento,coche,andamur:mcCard||andamur,dkv:dkvCard,dkv_importe:dkvImporte,activa:true,limite_mensual:0});
   setLoading(btn,false);
   if(error){showError('a-error',error.message);return;}
   closeSheet('sheet-asignar');
@@ -913,6 +968,7 @@ async function saveManual(){
     evento_principal:document.getElementById('m-evento').value.trim(),
     andamur:document.getElementById('m-andamur').value.trim()||'SIN',
     dkv:document.getElementById('m-dkv').value.trim()||'SIN',
+    dkv_importe:parseFloat(document.getElementById('m-dkv-importe').value)||0,
     activa:false,limite_mensual:0
   }).select().single();
   if(tErr){showError('m-error',tErr.message);setLoading(btn,false);return;}
@@ -968,6 +1024,59 @@ async function exportarExcel(){
   XLSX.utils.book_append_sheet(wb,ws,mes);
   XLSX.writeFile(wb,`registro_tarjetas_${new Date().toISOString().slice(0,7)}.xlsx`);
   toast('Excel descargado ✓');
+}
+
+// IMPORTE DETAIL POPUP
+function showImporteDetail(el, cat, tarjetaId) {
+  // Remove existing popup
+  document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+  
+  const gastos = _allGastos.filter(g=>g.tarjeta_id===tarjetaId && g.categoria===cat);
+  if(!gastos.length) return;
+  
+  const CAT_NAMES = {comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil'};
+  
+  const popup = document.createElement('div');
+  popup.className = 'importe-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;padding:0.75rem;z-index:500;min-width:220px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-size:0.78rem';
+  
+  popup.innerHTML = `
+    <div style="font-weight:700;color:#f69032;margin-bottom:0.5rem;font-size:0.8rem">${CAT_NAMES[cat]||cat}</div>
+    ${gastos.map(g=>`
+      <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;justify-content:space-between;gap:0.5rem">
+          <span style="color:#f1f5f9;font-weight:600;flex:1">${esc(g.descripcion)}</span>
+          <span style="color:${g.ticket_url?'#22d3a3':'#f87171'};font-weight:700;white-space:nowrap">${parseFloat(g.monto).toFixed(2)} € ${g.ticket_url?'📎':'⚠️'}</span>
+        </div>
+        ${g.lugar?`<div style="color:#94a3b8;font-size:0.7rem;margin-top:2px">📍 ${esc(g.lugar)}</div>`:''}
+        ${g.fecha?`<div style="color:#64748b;font-size:0.68rem">${fmtDate(g.fecha)}</div>`:''}
+      </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;padding-top:6px;font-weight:700;color:#f9a84d">
+      <span>Total</span>
+      <span>${gastos.reduce((s,g)=>s+parseFloat(g.monto),0).toFixed(2)} €</span>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // Position near clicked element
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+  
+  // Keep within viewport
+  if(left + 300 > window.innerWidth) left = window.innerWidth - 310;
+  if(top + 200 > window.innerHeight) top = rect.top - popup.offsetHeight - 4;
+  
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+  
+  // Close on click outside
+  setTimeout(()=>{
+    document.addEventListener('click', ()=>{
+      document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+    }, {once:true});
+  }, 10);
 }
 
 // UTILS
