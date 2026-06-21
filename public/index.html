@@ -150,14 +150,21 @@
           <div class="card-label">Mi tarjeta</div>
           <div id="emp-no-card" class="card hidden"><div class="empty">No tienes tarjeta asignada.<br>Contacta con la empresa.</div></div>
           <div id="emp-card-display" class="hidden">
-            <div class="credit-card">
-              <div class="card-number" id="emp-card-number">•••• •••• •••• ——</div>
-              <div class="card-row">
-                <div class="card-field"><span>Titular</span><strong id="emp-card-name">—</strong></div>
-                <div class="card-field" style="text-align:right"><span>Entregada</span><strong id="emp-card-received">—</strong></div>
-              </div>
+            <div id="emp-devuelta-banner" class="hidden" style="background:rgba(34,211,163,0.1);border:1px solid rgba(34,211,163,0.3);border-radius:var(--radius-sm);padding:0.65rem;margin-bottom:0.5rem;font-size:0.82rem;color:var(--success);text-align:center">✓ Tarjeta devuelta el <span id="emp-fecha-devolucion"></span></div>
+            <div class="tabla-wrap">
+              <table class="tabla" id="emp-tabla">
+                <thead>
+                  <tr><th colspan="18">MI TARJETA</th></tr>
+                  <tr>
+                    <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
+                    <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
+                    <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
+                    <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>F. DEVOLUCIÓN</th>
+                  </tr>
+                </thead>
+                <tbody id="emp-tabla-body"><tr><td colspan="18"><div class="empty">Cargando...</div></td></tr></tbody>
+              </table>
             </div>
-            <div id="emp-devuelta-banner" class="hidden" style="background:rgba(34,211,163,0.1);border:1px solid rgba(34,211,163,0.3);border-radius:var(--radius-sm);padding:0.65rem;margin-top:0.5rem;font-size:0.82rem;color:var(--success);text-align:center">✓ Tarjeta devuelta el <span id="emp-fecha-devolucion"></span></div>
           </div>
         </div>
         <div>
@@ -571,9 +578,6 @@ async function loadEmpleadoData(){
     return;
   }
   document.getElementById('emp-card-display').classList.remove('hidden');
-  document.getElementById('emp-card-number').textContent=`•••• •••• •••• ${t.digitos}`;
-  document.getElementById('emp-card-name').textContent=t.nombre_titular;
-  document.getElementById('emp-card-received').textContent=fmtDate(t.fecha_entrega);
   if(t.fecha_devolucion){
     document.getElementById('emp-devuelta-banner').classList.remove('hidden');
     document.getElementById('emp-fecha-devolucion').textContent=fmtDate(t.fecha_devolucion);
@@ -581,6 +585,7 @@ async function loadEmpleadoData(){
     document.getElementById('btn-devolver').style.display='flex';
     document.getElementById('btn-add-gasto').style.display='flex';
   }
+  renderEmpTabla(t, gastos||[]);
   const{data:gastos}=await sb.from('gastos').select('*').eq('tarjeta_id',t.id).order('fecha',{ascending:false});
   _empGastos=gastos||[];
   renderGastosEmpleado(gastos||[]);
@@ -665,6 +670,65 @@ function renderGastosEmpleado(gastos){
   document.getElementById('emp-total-val').textContent=total.toFixed(2)+' €';
   document.getElementById('emp-total').classList.remove('hidden');
   document.getElementById('emp-total').style.display='flex';
+}
+
+// EMPLOYEE TABLE ROW
+function renderEmpTabla(t, gastos) {
+  const tbody = document.getElementById('emp-tabla-body');
+  if(!tbody) return;
+  
+  const CAT_COLS = ['comidas','vuelos','trenes','alquiler','hoteles','material','parking','gasoil'];
+  const bycat = cat => gastos.filter(g=>g.categoria===cat).reduce((s,g)=>s+parseFloat(g.monto),0);
+  const catHasTicket = cat => gastos.some(g=>g.categoria===cat&&g.ticket_url);
+  const catHasMissing = cat => gastos.some(g=>g.categoria===cat&&!g.ticket_url);
+  const vals = CAT_COLS.map(bycat);
+  const total = vals.reduce((a,b)=>a+b,0);
+  const devuelto = !!t.fecha_devolucion;
+
+  let html = `<tr class="row-main" onclick="toggleRow('emp-row')">
+    <td style="text-align:center;width:22px">${gastos.length>0?'<span class="toggle-arrow" id="arrow-emp-row">▶</span>':''}</td>
+    <td style="cursor:pointer" data-tid="${t.id}" data-field="fecha_entrega" data-val="${t.fecha_entrega||''}" data-label="F. Entrega" onclick="event.stopPropagation();openDatePickerCell(this)">${fmtDate(t.fecha_entrega)} ✎</td>
+    <td style="cursor:pointer" data-tid="${t.id}" data-id="${t.id}" data-n="${t.nombre_titular}" onclick="event.stopPropagation();showResponsableDropdown(this,this.dataset.id,this.dataset.n)"><strong>${esc(t.nombre_titular)}</strong> ▾</td>
+    <td style="color:var(--muted);font-size:0.7rem;cursor:pointer" data-tid="${t.id}" data-coche="${t.coche||''}" onclick="event.stopPropagation();showCocheDropdown(this,this.dataset.tid,this.dataset.coche)">${esc(t.coche||'Sin coche')} ▾</td>
+    <td style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-val="${esc(t.evento_principal||'')||''}" onclick="event.stopPropagation();editEventoCell(this)">${esc(t.evento_principal||'—')} ✎</td>
+    ${CAT_COLS.map((cat,i)=>{
+      const v=vals[i];
+      if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" data-cat="${cat}" onclick="event.stopPropagation();openGastoSheet()">+</td>`;
+      const hasT=catHasTicket(cat);const noT=catHasMissing(cat);
+      const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
+      const bg=hasT&&!noT?'rgba(34,211,163,0.08)':noT?'rgba(248,113,113,0.08)':'transparent';
+      const catGastos=gastos.filter(g=>g.categoria===cat);
+      return`<td class="num" style="color:${color};background:${bg};font-weight:700;cursor:pointer" onclick="event.stopPropagation();showEmpCatDetail('${cat}','${(t.fecha_entrega||'').slice(0,7)}')">${v.toFixed(2)}</td>`;
+    }).join('')}
+    <td class="total-cell">${total.toFixed(2)} €</td>
+    <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.titular||t.digitos+' '+t.nombre_titular)}" onclick="event.stopPropagation();showTitularDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
+    <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.andamur||'SIN')}" onclick="event.stopPropagation();showAndamurDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
+    <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.dkv||'SIN')}" onclick="event.stopPropagation();showDkvDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
+    ${t.dkv_importe&&t.dkv_importe>0?`<td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${parseFloat(t.dkv_importe).toFixed(2)}</td>`:`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" onclick="event.stopPropagation();openGastoSheet()">+</td>`}
+    <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
+  </tr>`;
+
+  // Sub-rows for gastos
+  gastos.forEach(g=>{
+    const ok=!!g.ticket_url;
+    const gColor=ok?'#22d3a3':'#f87171';
+    const gBg=ok?'rgba(34,211,163,0.08)':'rgba(248,113,113,0.08)';
+    const gcols=CAT_COLS.map(cat=>cat===g.categoria?`<td class="num" style="color:${gColor};background:${gBg};font-weight:600">${parseFloat(g.monto).toFixed(2)} ${ok?'📎':'⚠️'}</td>`:'<td></td>');
+    html+=`<tr class="row-sub" id="sub-emp-row-${g.id}">
+      <td></td><td>${fmtDate(g.fecha)}</td>
+      <td colspan="2" style="color:var(--text)">• ${esc(g.descripcion)}</td>
+      <td style="color:var(--muted);font-size:0.65rem">${g.evento||''}</td>
+      ${gcols.join('')}
+      <td class="num" style="color:${gColor};font-weight:700">${parseFloat(g.monto).toFixed(2)}</td>
+      <td colspan="4">${g.ticket_url?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light)">📎 ver</a>`:''}</td>
+      <td style="white-space:nowrap">
+        <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem;margin-right:2px">✏️</button>
+        <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem">🗑</button>
+      </td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
 }
 
 // Employee category detail popup
@@ -897,7 +961,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showAndamurDropdown(this,'${t.id}','${esc(t.andamur||'SIN')}')">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showDkvDropdown(this,'${t.id}','${esc(t.dkv||'SIN')}')">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
-      <td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'<span style=\"color:var(--muted);opacity:0.4\">+</span>'}</td>
+      ${t.dkv_importe&&t.dkv_importe>0?`<td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${parseFloat(t.dkv_importe).toFixed(2)}</td>`:`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();openAdminGastoSheetWith(this.dataset.tid,'gasoil')" >+</td>`}
       <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
