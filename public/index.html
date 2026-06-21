@@ -883,7 +883,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="color:var(--muted);font-size:0.68rem">${esc(t.evento_principal||'')}</td>
       ${CAT_COLS.map((cat,i)=>{
         const v=vals[i];
-        if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" onclick="event.stopPropagation();openAdminGastoSheetWith('${t.id}','${cat}')">+</td>`;
+        if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" data-cat="${cat}" onclick="event.stopPropagation();openAdminGastoSheetWith(this.dataset.tid,this.dataset.cat)">+</td>`;
         const hasT=catHasTicket(cat);
         const noT=catHasMissing(cat);
         const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
