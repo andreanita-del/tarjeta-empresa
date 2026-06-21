@@ -877,7 +877,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
 
     html+=`<tr class="row-main" onclick="${hasGastos?`toggleRow('${rowId}')` :''}">
       <td style="text-align:center;width:22px">${hasGastos?`<span class="toggle-arrow" id="arrow-${rowId}">▶</span>`:''}</td>
-      <td style="cursor:pointer;position:relative" onclick="event.stopPropagation();openDatePicker(this,'${t.id}','fecha_entrega','${t.fecha_entrega||''}','F. Entrega')">${fmtDate(t.fecha_entrega)} ✎</td>
+      <td style="cursor:pointer" data-tid="${t.id}" data-field="fecha_entrega" data-val="${t.fecha_entrega||''}" data-label="F. Entrega" onclick="event.stopPropagation();openDatePickerCell(this)">${fmtDate(t.fecha_entrega)} ✎</td>
       <td style="cursor:pointer" onclick="event.stopPropagation();showResponsableDropdown(this,'${t.id}','${esc(t.nombre_titular)}')""><strong>${esc(t.nombre_titular)}</strong> ▾</td>
       <td style="color:var(--muted);font-size:0.7rem;cursor:pointer" onclick="event.stopPropagation();showCocheDropdown(this,'${t.id}','${esc(t.coche||'')}')">${esc(t.coche||'Sin coche')} ▾</td>
       <td style="color:var(--muted);font-size:0.68rem">${esc(t.evento_principal||'')}</td>
@@ -898,7 +898,7 @@ function renderTablaForMonth(month,tarjetas,gastos){
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showAndamurDropdown(this,'${t.id}','${esc(t.andamur||'SIN')}')">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showDkvDropdown(this,'${t.id}','${esc(t.dkv||'SIN')}')">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
       <td class="num" style="color:var(--muted);font-size:0.68rem">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'—'}</td>
-      <td style="font-size:0.68rem;cursor:pointer" onclick="event.stopPropagation();openDatePicker(this,'${t.id}','fecha_devolucion','${t.fecha_devolucion||''}','F. Devolución')">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
+      <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
         <button onclick="event.stopPropagation();deleteTarjeta('${t.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem">🗑</button>
@@ -1479,6 +1479,7 @@ function showCocheDropdown(el, tarjetaId, currentVal) {
 
 // RESPONSABLE DROPDOWN
 function showResponsableDropdown(el, tarjetaId, currentVal) {
+  currentVal = el.dataset.n || currentVal;
   const responsables = ['Julien','Vanina','Tatiana','Agustin','Noemie','Florin','Pierre','Gabriel','Leandre','Antonio','Franco','Ruben','Daniel','Philippe','Christian','Alberto','Leku','Raul','Imano','Tomas','Laura'];
   showInlineDropdown(el, responsables, currentVal, 'resp-dropdown', async (val)=>{
     await sb.from('tarjetas').update({nombre_titular:val}).eq('id',tarjetaId);
