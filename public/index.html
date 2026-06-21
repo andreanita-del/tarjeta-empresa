@@ -96,6 +96,15 @@
     @keyframes spin{to{transform:rotate(360deg)}}
     .empty{text-align:center;padding:2rem 1rem;color:var(--muted);font-size:0.85rem}
     .admin-pill{background:rgba(246,144,50,0.25);color:#f9a84d;border-radius:20px;padding:2px 8px;font-size:0.68rem;font-weight:700}
+    .cat-totals-wrap{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+    .cat-totals-wrap::-webkit-scrollbar{display:none}
+    .cat-total-card{flex-shrink:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px;min-width:100px;cursor:pointer;transition:border-color 0.15s}
+    .cat-total-card:hover{border-color:var(--accent)}
+    .cat-total-card.active{border-color:#f69032;background:rgba(246,144,50,0.08)}
+    .cat-total-icon{font-size:1.1rem;margin-bottom:3px}
+    .cat-total-name{font-size:0.62rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+    .cat-total-val{font-size:0.95rem;font-weight:700;color:#f1f5f9;margin-top:2px}
+    .cat-total-val.green{color:var(--success)}.cat-total-val.red{color:var(--danger)}
     .hidden{display:none!important}.text-muted{color:var(--muted);font-size:0.82rem}
   </style>
 </head>
@@ -171,11 +180,14 @@
     <div id="view-admin" class="screen hidden">
       <div class="content">
         <div class="stats-grid">
-          <div class="stat"><div class="stat-val" id="st-tarjetas">0</div><div class="stat-lbl">Tarjetas activas</div></div>
-          <div class="stat"><div class="stat-val" id="st-empleados">0</div><div class="stat-lbl">Empleados</div></div>
+          <div class="stat" onclick="showTarjetasPopup()" style="cursor:pointer"><div class="stat-val" id="st-tarjetas">0</div><div class="stat-lbl">Tarjetas activas ▾</div></div>
+          <div class="stat" onclick="showEmpleadosPopup()" style="cursor:pointer"><div class="stat-val" id="st-empleados">0</div><div class="stat-lbl">Empleados ▾</div></div>
           <div class="stat"><div class="stat-val" id="st-gastos">0</div><div class="stat-lbl">Gastos registrados</div></div>
-          <div class="stat"><div class="stat-val" id="st-total">0 €</div><div class="stat-lbl">Total gastado</div></div>
+          <div class="stat" onclick="showTotalPopup()" style="cursor:pointer"><div class="stat-val" id="st-total">0 €</div><div class="stat-lbl">Total gastado ▾</div></div>
         </div>
+        <!-- CATEGORY TOTALS -->
+        <div class="cat-totals-wrap" id="cat-totals-wrap"></div>
+
         <div>
           <div class="section-hd">
             <h2>📋 Registro de tarjetas</h2>
@@ -195,7 +207,7 @@
                   <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
                   <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
                   <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
-                  <th>TOTAL</th><th>NR. MC</th><th>NR. DKV/Andamur</th><th>DKV/ANDA</th><th>F. DEVOLUCIÓN</th><th></th>
+                  <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA</th><th>F. DEVOLUCIÓN</th><th></th>
                 </tr>
               </thead>
               <tbody id="tabla-body"><tr><td colspan="20"><div class="empty">No hay datos</div></td></tr></tbody>
@@ -230,6 +242,10 @@
           <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil</option><option value="otro">🧾 Otro</option>
         </select>
       </div>
+    </div>
+    <div class="form-group" id="g-tarjeta-mc-group">
+      <label class="form-label">Tarjeta MC</label>
+      <select id="g-tarjeta-mc"><option value="">Selecciona tarjeta MC...</option></select>
     </div>
     <div class="form-group"><label class="form-label">Descripción / Proveedor</label><input type="text" id="g-desc" placeholder="Ej: Hotel Ibis, Ryanair..."/></div>
     <div class="form-row">
@@ -505,7 +521,16 @@ function showAuthError(msg){const e=document.getElementById('auth-error');e.text
 async function loadEmpleadoData(){
   const{data:t}=await sb.from('tarjetas').select('*').eq('empleado_id',currentUser.id).eq('activa',true).maybeSingle();
   miTarjeta=t;
-  if(!t){document.getElementById('emp-no-card').classList.remove('hidden');return;}
+  if(!t){
+    // No tarjeta assigned - show message but still allow adding gastos
+    document.getElementById('emp-no-card').classList.remove('hidden');
+    document.getElementById('emp-no-card').innerHTML = '<div style="padding:0.75rem;font-size:0.82rem;color:var(--muted);text-align:center">Sin tarjeta asignada — puedes registrar gastos seleccionando la tarjeta MC</div>';
+    document.getElementById('btn-add-gasto').style.display='flex';
+    const{data:gastos}=await sb.from('gastos').select('*').eq('empleado_id',currentUser.id).order('fecha',{ascending:false});
+    _empGastos=gastos||[];
+    renderGastosEmpleado(gastos||[]);
+    return;
+  }
   document.getElementById('emp-card-display').classList.remove('hidden');
   document.getElementById('emp-card-number').textContent=`•••• •••• •••• ${t.digitos}`;
   document.getElementById('emp-card-name').textContent=t.nombre_titular;
@@ -518,43 +543,125 @@ async function loadEmpleadoData(){
     document.getElementById('btn-add-gasto').style.display='flex';
   }
   const{data:gastos}=await sb.from('gastos').select('*').eq('tarjeta_id',t.id).order('fecha',{ascending:false});
+  _empGastos=gastos||[];
   renderGastosEmpleado(gastos||[]);
 }
 
 function renderGastosEmpleado(gastos){
   const list=document.getElementById('emp-gastos-list');
   if(!gastos.length){list.innerHTML='<div class="empty">Añade tu primer gasto</div>';return;}
-  list.innerHTML=gastos.map(g=>{
-    const ok=!!g.ticket_url;
-    const col=ok?'var(--success)':'var(--danger)';
-    const bg=ok?'rgba(34,211,163,0.08)':'rgba(248,113,113,0.08)';
-    const bdCol=ok?'rgba(34,211,163,0.3)':'rgba(248,113,113,0.3)';
-    const badge=ok?'✓ Confirmado':'⚠️ Sin confirmación';
-    const devuelto=!!miTarjeta?.fecha_devolucion;
-    return `<div class="list-item" style="border-left:3px solid ${col};padding-left:10px">
-      <div class="list-icon">${CATS[g.categoria]||'🧾'}</div>
-      <div class="list-body">
-        <div class="list-title">${esc(g.descripcion)}</div>
-        <div class="list-meta">${g.categoria||''} · ${fmtDate(g.fecha)}</div>
-        ${g.evento?`<div class="list-meta">${esc(g.evento)}</div>`:''}
-        <div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;background:${bg};border:1px solid ${bdCol};border-radius:20px;padding:2px 8px">
-          <span style="color:${col};font-size:0.7rem;font-weight:600">${badge}</span>
-          ${ok?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light);font-size:0.7rem">ver</a>`:''}
+  
+  // Group by month for history
+  const byMonth={};
+  gastos.forEach(g=>{
+    const m=g.fecha?g.fecha.slice(0,7):'sin-fecha';
+    if(!byMonth[m])byMonth[m]=[];
+    byMonth[m].push(g);
+  });
+  
+  const devuelto=!!miTarjeta?.fecha_devolucion;
+  let html='';
+  
+  Object.keys(byMonth).sort().reverse().forEach(month=>{
+    const mGastos=byMonth[month];
+    const mTotal=mGastos.reduce((s,g)=>s+parseFloat(g.monto),0);
+    const[y,mo]=month.split('-');
+    const mLabel=mo?(['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(mo)-1]+' '+y):month;
+    
+    // Category summary for this month - clickable
+    const catTotals={};
+    mGastos.forEach(g=>{if(!catTotals[g.categoria])catTotals[g.categoria]=[];catTotals[g.categoria].push(g);});
+    
+    html+=`<div style="margin-bottom:0.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px">
+        <span style="font-size:0.72rem;font-weight:700;color:#f69032">${mLabel}</span>
+        <span style="font-size:0.78rem;font-weight:700;color:#f9a84d">${mTotal.toFixed(2)} €</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+        ${Object.entries(catTotals).map(([cat,cg])=>{
+          const cTotal=cg.reduce((s,g)=>s+parseFloat(g.monto),0);
+          const allOk=cg.every(g=>g.ticket_url);
+          const anyMissing=cg.some(g=>!g.ticket_url);
+          const col=allOk?'var(--success)':anyMissing?'var(--danger)':'var(--text)';
+          const bg=allOk?'rgba(34,211,163,0.1)':anyMissing?'rgba(248,113,113,0.1)':'rgba(255,255,255,0.05)';
+          return `<div onclick="showEmpCatDetail('${cat}','${month}')" style="background:${bg};border:1px solid ${col};border-radius:8px;padding:4px 8px;cursor:pointer;font-size:0.72rem">
+            <span>${CATS[cat]||'🧾'}</span>
+            <span style="color:${col};font-weight:600;margin-left:3px">${cTotal.toFixed(2)}€</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    
+    // Individual gastos
+    mGastos.forEach(g=>{
+      const ok=!!g.ticket_url;
+      const col=ok?'var(--success)':'var(--danger)';
+      const bg=ok?'rgba(34,211,163,0.08)':'rgba(248,113,113,0.08)';
+      const bdCol=ok?'rgba(34,211,163,0.3)':'rgba(248,113,113,0.3)';
+      html+=`<div class="list-item" style="border-left:3px solid ${col};padding-left:10px">
+        <div class="list-icon">${CATS[g.categoria]||'🧾'}</div>
+        <div class="list-body">
+          <div class="list-title">${esc(g.descripcion)}</div>
+          <div class="list-meta">${g.categoria||''} · ${fmtDate(g.fecha)}</div>
+          ${g.lugar?`<div class="list-meta">📍 ${esc(g.lugar)}</div>`:''}
+          ${g.evento?`<div class="list-meta">${esc(g.evento)}</div>`:''}
+          <div style="margin-top:4px;display:inline-flex;align-items:center;gap:5px;background:${bg};border:1px solid ${bdCol};border-radius:20px;padding:2px 8px">
+            <span style="color:${col};font-size:0.7rem;font-weight:600">${ok?'✓ Confirmado':'⚠️ Sin confirmación'}</span>
+            ${ok?`<span onclick="viewTicket('${g.ticket_url}')" style="cursor:pointer;font-size:0.9rem">📎</span>`:''}
+          </div>
         </div>
-      </div>
-      <div class="list-right">
-        <div class="list-amount" style="color:${col}">${parseFloat(g.monto).toFixed(2)} €</div>
-        ${!devuelto?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
-          <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">✏️</button>
-          <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">🗑</button>
-        </div>`:''}
-      </div>
-    </div>`;
-  }).join('');
+        <div class="list-right">
+          <div class="list-amount" style="color:${col}">${parseFloat(g.monto).toFixed(2)} €</div>
+          ${!devuelto?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
+            <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">✏️</button>
+            <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">🗑</button>
+          </div>`:''}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  
+  list.innerHTML=html;
   const total=gastos.reduce((s,g)=>s+parseFloat(g.monto),0);
   document.getElementById('emp-total-val').textContent=total.toFixed(2)+' €';
   document.getElementById('emp-total').classList.remove('hidden');
   document.getElementById('emp-total').style.display='flex';
+}
+
+// Employee category detail popup
+function showEmpCatDetail(cat, month) {
+  const gastos=_empGastos||[];
+  const cg=gastos.filter(g=>g.categoria===cat&&g.fecha&&g.fecha.startsWith(month));
+  if(!cg.length)return;
+  const CAT_NAMES={comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil',otro:'Otro'};
+  document.querySelectorAll('.emp-cat-popup').forEach(p=>p.remove());
+  const popup=document.createElement('div');
+  popup.className='emp-cat-popup';
+  popup.style.cssText='position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:240px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,0.4);top:50%;left:50%;transform:translate(-50%,-50%)';
+  popup.innerHTML=`
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between">
+      <span style="font-weight:700;color:#f69032;font-size:0.85rem">${CATS[cat]||'🧾'} ${CAT_NAMES[cat]||cat}</span>
+      <span onclick="this.closest('.emp-cat-popup').remove()" style="cursor:pointer;color:#94a3b8">✕</span>
+    </div>
+    <div style="padding:0.5rem 0">
+    ${cg.map(g=>`
+      <div style="padding:6px 1rem;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#f1f5f9;font-weight:600;font-size:0.82rem">${esc(g.descripcion)}</span>
+          <span style="display:flex;align-items:center;gap:4px">
+            <span style="color:${g.ticket_url?'var(--success)':'var(--danger)'};font-weight:700;font-size:0.82rem">${parseFloat(g.monto).toFixed(2)} €</span>
+            ${g.ticket_url?`<span onclick="viewTicket('${g.ticket_url}')" style="cursor:pointer;font-size:1rem">📎</span>`:'<span style="font-size:0.75rem">⚠️</span>'}
+          </span>
+        </div>
+        ${g.lugar?`<div style="color:#94a3b8;font-size:0.7rem">📍 ${esc(g.lugar)}</div>`:''}
+        <div style="color:#64748b;font-size:0.68rem">${fmtDate(g.fecha)}</div>
+      </div>`).join('')}
+    </div>
+    <div style="padding:8px 1rem;display:flex;justify-content:space-between;font-weight:700;color:#f9a84d;font-size:0.85rem;border-top:1px solid rgba(255,255,255,0.07)">
+      <span>Total</span><span>${cg.reduce((s,g)=>s+parseFloat(g.monto),0).toFixed(2)} €</span>
+    </div>`;
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
 }
 
 // EMPLEADO - editar/borrar gasto
@@ -635,6 +742,7 @@ function buildMonthTabs(tarjetas,gastos){
     return `<button class="month-tab${m===_currentMonth?' active':''}" onclick="selectMonth('${m}')">${label}</button>`;
   }).join('');
 
+  renderCatTotals(_currentMonth,tarjetas,gastos);
   renderTablaForMonth(_currentMonth,tarjetas,gastos);
 }
 
@@ -643,12 +751,66 @@ function selectMonth(m){
   document.querySelectorAll('.month-tab').forEach(b=>{
     b.classList.toggle('active',b.textContent.trim()===formatMonthLabel(m));
   });
+  renderCatTotals(m,_allTarjetas,_allGastos);
   renderTablaForMonth(m,_allTarjetas,_allGastos);
 }
 
 function formatMonthLabel(m){
   const[y,mo]=m.split('-');
   return MESES[parseInt(mo)-1]+' '+y;
+}
+
+function renderCatTotals(month, tarjetas, gastos) {
+  const wrap = document.getElementById('cat-totals-wrap');
+  if(!wrap) return;
+  const tMes = tarjetas.filter(t=>t.fecha_entrega&&t.fecha_entrega.startsWith(month));
+  const tIds = new Set([...tMes.map(t=>t.id), ...gastos.filter(g=>g.fecha&&g.fecha.startsWith(month)).map(g=>g.tarjeta_id)]);
+  const mGastos = gastos.filter(g=>g.fecha&&g.fecha.startsWith(month)&&tIds.has(g.tarjeta_id));
+  
+  const cats = [
+    {key:'comidas',icon:'🍽',name:'Comidas'},
+    {key:'vuelos',icon:'✈️',name:'Vuelos'},
+    {key:'trenes',icon:'🚆',name:'Trenes/Taxi'},
+    {key:'alquiler',icon:'🚗',name:'Alquiler'},
+    {key:'hoteles',icon:'🏨',name:'Hoteles'},
+    {key:'material',icon:'📦',name:'Material'},
+    {key:'parking',icon:'🅿️',name:'Parking'},
+    {key:'gasoil',icon:'⛽',name:'Gasoil'},
+  ];
+  
+  const grandTotal = mGastos.reduce((s,g)=>s+parseFloat(g.monto),0);
+  
+  wrap.innerHTML = `
+    <div class="cat-total-card active" style="border-color:#f69032;background:rgba(246,144,50,0.08);min-width:90px">
+      <div class="cat-total-icon">📋</div>
+      <div class="cat-total-name">Total</div>
+      <div class="cat-total-val" style="color:#f9a84d">${grandTotal.toFixed(2)} €</div>
+    </div>
+    ${cats.map(c=>{
+      const cg = mGastos.filter(g=>g.categoria===c.key);
+      const total = cg.reduce((s,g)=>s+parseFloat(g.monto),0);
+      const allOk = cg.length>0&&cg.every(g=>g.ticket_url);
+      const anyMissing = cg.some(g=>!g.ticket_url);
+      const valClass = total===0?'':allOk?'green':anyMissing?'red':'';
+      return `<div class="cat-total-card" onclick="filterByCat('${c.key}')">
+        <div class="cat-total-icon">${c.icon}</div>
+        <div class="cat-total-name">${c.name}</div>
+        <div class="cat-total-val ${valClass}">${total>0?total.toFixed(2)+' €':'—'}</div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+let _activeCatFilter = null;
+function filterByCat(cat) {
+  _activeCatFilter = _activeCatFilter===cat ? null : cat;
+  document.querySelectorAll('.cat-total-card').forEach(c=>c.classList.remove('active'));
+  if(_activeCatFilter) {
+    // highlight selected
+    const cards = document.querySelectorAll('.cat-total-card');
+    cards.forEach(c=>{if(c.querySelector('.cat-total-name')?.textContent.toLowerCase().includes(cat.slice(0,4)))c.classList.add('active');});
+  }
+  renderTablaForMonth(_currentMonth, _allTarjetas, _allGastos);
 }
 
 function renderTablaForMonth(month,tarjetas,gastos){
@@ -693,12 +855,11 @@ function renderTablaForMonth(month,tarjetas,gastos){
         return`<td class="num" style="color:${color};background:${bg};font-weight:700;${catGastos.length>0?'cursor:pointer;':''}" title="${tooltip}" ${clickFn}>${v.toFixed(2)}</td>`;
       }).join('')}
       <td class="total-cell">${total.toFixed(2)} €</td>
-      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.andamur||'SIN')}</td>
-      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.dkv||'SIN')}</td>
-      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.digitos ? t.digitos+' '+t.nombre_titular : '—')}</td>
-      <td style="font-size:0.68rem;color:var(--muted)">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:t.andamur&&t.andamur!=='SIN'?t.andamur:'—')}</td>
+      <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
+      <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showAndamurDropdown(this,'${t.id}','${esc(t.andamur||'SIN')}')">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
+      <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showDkvDropdown(this,'${t.id}','${esc(t.dkv||'SIN')}')">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
       <td class="num" style="color:var(--muted);font-size:0.68rem">${t.dkv_importe&&t.dkv_importe>0?parseFloat(t.dkv_importe).toFixed(2):'—'}</td>
-      <td>${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente</span>`}</td>
+      <td style="font-size:0.68rem">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
         <button onclick="event.stopPropagation();deleteTarjeta('${t.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem">🗑</button>
@@ -821,7 +982,25 @@ async function deleteGasto(id){
 }
 
 // GASTO EMPLEADO
-function openGastoSheet(){if(!miTarjeta)return;openSheet('sheet-gasto');}
+function openGastoSheet(){
+  const mcSelect = document.getElementById('g-tarjeta-mc');
+  const mcGroup = document.getElementById('g-tarjeta-mc-group');
+  const mcCards = [
+    '5031 Julien','8025 Vanina','9018 Andreea','2015 Agustin','1015 Noemie',
+    '1012 Florin','8011 Pierre','7039 Gabriel','6013 Leandre','7024 Antonio',
+    '9016 Franco','0304 Ruben','9556 Daniel','2494 Philippe','7414 Christian',
+    '7380 Alberto'
+  ];
+  if(!miTarjeta){
+    // Show MC dropdown when no tarjeta assigned
+    mcGroup.style.display='flex';
+    mcSelect.innerHTML='<option value="">Selecciona tarjeta MC...</option>'+mcCards.map(c=>`<option value="${c}">${c}</option>`).join('');
+  } else {
+    // Hide MC dropdown - tarjeta already assigned
+    mcGroup.style.display='none';
+  }
+  openSheet('sheet-gasto');
+}
 async function saveGasto(){
   const fecha=document.getElementById('g-fecha').value;
   const desc=document.getElementById('g-desc').value.trim();
@@ -829,6 +1008,9 @@ async function saveGasto(){
   const cat=document.getElementById('g-cat').value;
   const evento=document.getElementById('g-evento').value.trim();
   if(!fecha||!desc||!monto||monto<=0){showError('g-error','Rellena fecha, descripción e importe');return;}
+  // If no tarjeta assigned, require MC selection
+  const mcVal=document.getElementById('g-tarjeta-mc').value;
+  if(!miTarjeta&&!mcVal){showError('g-error','Selecciona la tarjeta MC');return;}
   const btn=document.getElementById('btn-save-gasto');setLoading(btn,true);
   let ticket_url=null;
   if(gastoTicketFile){
@@ -838,7 +1020,10 @@ async function saveGasto(){
     if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
   }
   const lugar=document.getElementById('g-lugar').value.trim();
-  const{error}=await sb.from('gastos').insert({tarjeta_id:miTarjeta.id,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,ticket_url,lugar});
+  const mcSel=document.getElementById('g-tarjeta-mc').value;
+  const gastoData={empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,ticket_url,lugar};
+  if(miTarjeta){gastoData.tarjeta_id=miTarjeta.id;}else{gastoData.titular=mcSel;}
+  const{error}=await sb.from('gastos').insert(gastoData);
   setLoading(btn,false);
   if(error){showError('g-error',error.message);return;}
   closeSheet('sheet-gasto');
@@ -1026,6 +1211,189 @@ async function exportarExcel(){
   toast('Excel descargado ✓');
 }
 
+// TARJETAS ACTIVAS POPUP
+async function showTarjetasPopup() {
+  document.querySelectorAll('.tarjetas-popup').forEach(p=>p.remove());
+  
+  const activas = _allTarjetas.filter(t=>t.activa&&!t.fecha_devolucion);
+  
+  const popup = document.createElement('div');
+  popup.className = 'tarjetas-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:270px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);top:50%;left:50%;transform:translate(-50%,-50%);max-height:80dvh;overflow-y:auto';
+  
+  popup.innerHTML = `
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0">
+      <div style="font-weight:700;color:#f69032;font-size:0.85rem">💳 Tarjetas activas (${activas.length})</div>
+      <span onclick="this.closest('.tarjetas-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${activas.length===0?'<div style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:0.85rem">No hay tarjetas activas</div>':
+    activas.map(t=>{
+      const gastado = _allGastos.filter(g=>g.tarjeta_id===t.id&&g.fecha&&g.fecha.startsWith(_currentMonth||'')).reduce((s,g)=>s+parseFloat(g.monto),0);
+      const initials = t.nombre_titular.split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
+      return `<div style="display:flex;align-items:center;gap:0.65rem;padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.85rem;font-weight:600;color:#f1f5f9">${t.nombre_titular}</div>
+          <div style="font-size:0.7rem;color:#94a3b8">···· ${t.digitos} · Entregada ${fmtDate(t.fecha_entrega)}</div>
+          ${t.evento_principal?`<div style="font-size:0.68rem;color:#64748b">${esc(t.evento_principal)}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:0.85rem;font-weight:700;color:#f9a84d">${gastado>0?gastado.toFixed(2)+' €':'—'}</div>
+          <div style="font-size:0.62rem;color:#94a3b8">este mes</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+  
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// TOTAL GASTADO POPUP
+async function showTotalPopup() {
+  document.querySelectorAll('.total-popup').forEach(p=>p.remove());
+  
+  // Get gastos for current month grouped by responsable
+  const month = _currentMonth || new Date().toISOString().slice(0,7);
+  const mGastos = _allGastos.filter(g=>g.fecha&&g.fecha.startsWith(month));
+  
+  // Group by tarjeta
+  const byTarjeta = {};
+  mGastos.forEach(g=>{
+    const t = _allTarjetas.find(x=>x.id===g.tarjeta_id);
+    const nombre = t ? t.nombre_titular : 'Sin asignar';
+    if(!byTarjeta[nombre]) byTarjeta[nombre] = {total:0, gastos:[], hasTicket:0, noTicket:0};
+    byTarjeta[nombre].total += parseFloat(g.monto);
+    byTarjeta[nombre].gastos.push(g);
+    if(g.ticket_url) byTarjeta[nombre].hasTicket++;
+    else byTarjeta[nombre].noTicket++;
+  });
+  
+  const sorted = Object.entries(byTarjeta).sort((a,b)=>b[1].total-a[1].total);
+  const grandTotal = sorted.reduce((s,[,v])=>s+v.total,0);
+  
+  const[y,mo] = month.split('-');
+  const mLabel = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][parseInt(mo)-1]+' '+y;
+  
+  const popup = document.createElement('div');
+  popup.className = 'total-popup';
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:280px;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,0.4);top:50%;left:50%;transform:translate(-50%,-50%);max-height:80dvh;overflow-y:auto';
+  
+  popup.innerHTML = `
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0">
+      <div>
+        <div style="font-weight:700;color:#f69032;font-size:0.85rem">💶 Total por responsable</div>
+        <div style="font-size:0.7rem;color:#94a3b8">${mLabel}</div>
+      </div>
+      <span onclick="this.closest('.total-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${sorted.map(([nombre, data])=>{
+      const pct = grandTotal > 0 ? (data.total/grandTotal*100) : 0;
+      const initials = nombre.split(' ').slice(0,2).map(p=>p[0]).join('').toUpperCase();
+      return `<div style="padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:5px">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(246,144,50,0.2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#f69032;flex-shrink:0">${initials}</div>
+          <div style="flex:1">
+            <div style="font-size:0.85rem;font-weight:600;color:#f1f5f9">${nombre}</div>
+            <div style="font-size:0.68rem;color:#94a3b8">${data.gastos.length} gasto${data.gastos.length!==1?'s':''} · ${data.hasTicket>0?'<span style="color:var(--success)">📎 '+data.hasTicket+'</span>':''} ${data.noTicket>0?'<span style="color:var(--danger)">⚠️ '+data.noTicket+'</span>':''}</div>
+          </div>
+          <div style="font-size:0.95rem;font-weight:700;color:#f9a84d">${data.total.toFixed(2)} €</div>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px">
+          <div style="height:4px;background:#f69032;border-radius:2px;width:${pct.toFixed(1)}%"></div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="padding:0.75rem 1rem;display:flex;justify-content:space-between;font-weight:700;color:#f9a84d;font-size:0.9rem;background:rgba(246,144,50,0.05)">
+      <span>TOTAL ${mLabel}</span>
+      <span>${grandTotal.toFixed(2)} €</span>
+    </div>
+  `;
+  
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// EMPLEADOS POPUP
+async function showEmpleadosPopup() {
+  document.querySelectorAll('.empleados-popup').forEach(p=>p.remove());
+  const{data:empleados}=await sb.from('profiles').select('id,name,email,is_admin').order('name');
+  const popup=document.createElement('div');
+  popup.className='empleados-popup';
+  popup.style.cssText='position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:12px;z-index:500;min-width:260px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;max-height:400px;overflow-y:auto;top:50%;left:50%;transform:translate(-50%,-50%)';
+  popup.innerHTML=`
+    <div style="padding:0.75rem 1rem;background:rgba(246,144,50,0.1);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;color:#f69032;font-size:0.85rem">👥 Empleados registrados</span>
+      <span onclick="this.closest('.empleados-popup').remove()" style="cursor:pointer;color:#94a3b8;font-size:1.1rem">✕</span>
+    </div>
+    ${(empleados||[]).map(e=>`
+      <div style="display:flex;align-items:center;gap:0.65rem;padding:0.7rem 1rem;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <div style="width:32px;height:32px;border-radius:50%;background:${e.is_admin?'rgba(246,144,50,0.2)':'rgba(99,102,241,0.2)'};display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:${e.is_admin?'#f69032':'#818cf8'};flex-shrink:0">
+          ${(e.name||e.email||'?')[0].toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.82rem;font-weight:600;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name||'Sin nombre'}</div>
+          <div style="font-size:0.7rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.email}</div>
+        </div>
+        ${e.is_admin?'<span style="background:rgba(246,144,50,0.2);color:#f69032;border-radius:20px;padding:2px 7px;font-size:0.6rem;font-weight:700;flex-shrink:0">Admin</span>':''}
+      </div>`).join('')}
+  `;
+  document.body.appendChild(popup);
+  setTimeout(()=>{document.addEventListener('click',e=>{if(!popup.contains(e.target))popup.remove();},{once:true});},10);
+}
+
+// ANDAMUR DROPDOWN
+function showAndamurDropdown(el, tarjetaId, currentVal) {
+  document.querySelectorAll('.andamur-dropdown').forEach(d=>d.remove());
+  const cards = ['SIN','Actros I 7847JFX','Actros II 2155HLV','Man 9293MKV','MAN 7.5 9025JRP','Transit 1024NHL','Renault 4194NCF','Vito 1 4671MKZ','GLB 7178LNX','GLC 4187NBS'];
+  showInlineDropdown(el, cards, currentVal, 'andamur-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({andamur:val}).eq('id',tarjetaId);
+    toast('Andamur actualizado ✓');loadAdminData();
+  });
+}
+
+// DKV DROPDOWN
+function showDkvDropdown(el, tarjetaId, currentVal) {
+  document.querySelectorAll('.dkv-dropdown').forEach(d=>d.remove());
+  const cards = ['SIN','DKV Julien','DKV Tomas','DKV Christian','DKV Alberto','DKV Laura','DKV Pierre','DKV Gabriel','DKV Florin'];
+  showInlineDropdown(el, cards, currentVal, 'dkv-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({dkv:val}).eq('id',tarjetaId);
+    toast('DKV actualizado ✓');loadAdminData();
+  });
+}
+
+// GENERIC INLINE DROPDOWN
+function showInlineDropdown(el, options, currentVal, className, onSelect) {
+  document.querySelectorAll('.'+className).forEach(d=>d.remove());
+  const dropdown = document.createElement('div');
+  dropdown.className = className;
+  dropdown.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;z-index:500;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;max-height:280px;overflow-y:auto';
+  dropdown.innerHTML = options.map(c=>`
+    <div class="dd-opt" style="padding:8px 14px;font-size:0.8rem;cursor:pointer;color:${c===currentVal?'#f69032':'#f1f5f9'};font-weight:${c===currentVal?'700':'400'};background:${c===currentVal?'rgba(246,144,50,0.1)':'transparent'}"
+      onmouseover="this.style.background='rgba(246,144,50,0.1)'" onmouseout="this.style.background='${c===currentVal?'rgba(246,144,50,0.1)':'transparent'}'">
+      ${c===currentVal?'✓ ':''}${c}
+    </div>`).join('');
+  dropdown.querySelectorAll('.dd-opt').forEach((opt,i)=>{
+    opt.addEventListener('click', (e)=>{e.stopPropagation();dropdown.remove();onSelect(options[i]);});
+  });
+  document.body.appendChild(dropdown);
+  const rect=el.getBoundingClientRect();
+  let top=rect.bottom+2,left=rect.left;
+  if(left+200>window.innerWidth)left=window.innerWidth-190;
+  if(top+300>window.innerHeight)top=rect.top-290;
+  dropdown.style.top=top+'px';dropdown.style.left=left+'px';
+  setTimeout(()=>{document.addEventListener('click',()=>dropdown.remove(),{once:true});},10);
+}
+
+// TITULAR MC DROPDOWN
+function showTitularDropdown(el, tarjetaId, currentVal) {
+  const mcCards = ['5031 Julien','8025 Vanina','9018 Andreea','2015 Agustin','1015 Noemie','1012 Florin','8011 Pierre','7039 Gabriel','6013 Leandre','7024 Antonio','9016 Franco','0304 Ruben','9556 Daniel','2494 Philippe','7414 Christian','7380 Alberto'];
+  showInlineDropdown(el, mcCards, currentVal, 'titular-dropdown', async (val)=>{
+    await sb.from('tarjetas').update({titular:val}).eq('id',tarjetaId);
+    toast('Titular MC actualizado ✓');loadAdminData();
+  });
+}
+
 // IMPORTE DETAIL POPUP
 function showImporteDetail(el, cat, tarjetaId) {
   // Remove existing popup
@@ -1046,7 +1414,7 @@ function showImporteDetail(el, cat, tarjetaId) {
       <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
         <div style="display:flex;justify-content:space-between;gap:0.5rem">
           <span style="color:#f1f5f9;font-weight:600;flex:1">${esc(g.descripcion)}</span>
-          <span style="color:${g.ticket_url?'#22d3a3':'#f87171'};font-weight:700;white-space:nowrap">${parseFloat(g.monto).toFixed(2)} € ${g.ticket_url?'📎':'⚠️'}</span>
+          <span style="color:${g.ticket_url?'#22d3a3':'#f87171'};font-weight:700;white-space:nowrap">${parseFloat(g.monto).toFixed(2)} € ${g.ticket_url?`<span onclick="event.stopPropagation();viewTicket('${g.ticket_url}')" style="cursor:pointer;font-size:1rem" title="Ver ticket">📎</span>`:'⚠️'}</span>
         </div>
         ${g.lugar?`<div style="color:#94a3b8;font-size:0.7rem;margin-top:2px">📍 ${esc(g.lugar)}</div>`:''}
         ${g.fecha?`<div style="color:#64748b;font-size:0.68rem">${fmtDate(g.fecha)}</div>`:''}
