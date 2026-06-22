@@ -154,12 +154,12 @@
             <div class="tabla-wrap">
               <table class="tabla" id="emp-tabla">
                 <thead>
-                  <tr><th colspan="18">MI TARJETA</th></tr>
+                  <tr><th colspan="21">MI TARJETA</th></tr>
                   <tr>
-                    <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
+                    <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>TITULAR MC</th><th>COCHE</th><th>EVENTO/USO</th>
                     <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
-                    <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
-                    <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>F. DEVOLUCIÓN</th>
+                    <th>Hoteles</th><th>Material</th><th>Parking</th><th>⛽ Gasoil+Peajes MC</th>
+                    <th>TOTAL MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>TOTAL GENERAL</th><th>F. DEVOLUCIÓN</th>
                   </tr>
                 </thead>
                 <tbody id="emp-tabla-body"><tr><td colspan="18"><div class="empty">Cargando...</div></td></tr></tbody>
@@ -201,23 +201,27 @@
           <div class="section-hd">
             <h2>📋 Registro de tarjetas</h2>
             <div style="display:flex;gap:5px">
+              <button class="btn btn-ghost btn-sm" onclick="toggleSearch()" style="background:rgba(99,102,241,0.15);color:var(--accent-light)">🔍 Buscar</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleFilter()" style="background:rgba(246,144,50,0.15);color:#f69032">🔽 Filtrar</button>
               <button class="btn btn-success btn-sm" onclick="exportarExcel()">⬇ Excel</button>
               <button class="btn btn-ghost btn-sm" onclick="openManualSheet()">+ Manual</button>
               <button class="btn btn-primary btn-sm" onclick="openAsignarSheet()">+ Asignar</button>
               <button class="btn btn-success btn-sm" onclick="openAdminGastoSheet()">+ Gasto</button>
             </div>
           </div>
+          <div id="search-bar" class="hidden" style="margin-bottom:8px"><input type="text" id="admin-search" placeholder="🔍 Buscar..." oninput="applySearchFilter()" style="background:var(--surface2);border:1px solid rgba(246,144,50,0.4);border-radius:8px;color:var(--text);padding:7px 12px;font-size:0.82rem;width:100%"/></div>
+          <div id="filter-panel" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:0.72rem;font-weight:700;color:#f69032">Filtrar:</span><select id="filter-evento" onchange="applySearchFilter()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:0.75rem;flex:1;min-width:90px"><option value="">Todos eventos</option></select><select id="filter-responsable" onchange="applySearchFilter()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:0.75rem;flex:1;min-width:90px"><option value="">Todos responsables</option></select><select id="filter-titular" onchange="applySearchFilter()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:0.75rem;flex:1;min-width:90px"><option value="">Todas MC</option></select><button onclick="clearFilters()" style="background:rgba(248,113,113,0.15);color:var(--danger);border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:4px 8px;font-size:0.72rem;cursor:pointer">✕</button></div></div>
           <!-- MONTH TABS -->
           <div class="month-tabs" id="month-tabs"></div>
           <div style="margin-top:8px" class="tabla-wrap">
             <table class="tabla" id="tabla-registro">
               <thead>
-                <tr><th colspan="18">REGISTRO DE TARJETAS — EVENTOS/LOCAL</th></tr>
+                <tr><th colspan="21">REGISTRO DE TARJETAS — EVENTOS/LOCAL</th></tr>
                 <tr>
-                  <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>COCHE</th><th>EVENTO/USO</th>
+                  <th></th><th>F. ENTREGA</th><th>RESPONSABLE</th><th>TITULAR MC</th><th>COCHE</th><th>EVENTO/USO</th>
                   <th>Comidas</th><th>Vuelos</th><th>Trenes</th><th>Alquiler</th>
-                  <th>Hoteles</th><th>Material</th><th>Parking</th><th>Gasoil</th>
-                  <th>TOTAL</th><th>Titular MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>F. DEVOLUCIÓN</th><th></th>
+                  <th>Hoteles</th><th>Material</th><th>Parking</th><th>⛽ Gasoil+Peajes MC</th>
+                  <th>TOTAL MC</th><th>NR. Andamur</th><th>NR. DKV</th><th>DKV/ANDA €</th><th>TOTAL GENERAL</th><th>F. DEVOLUCIÓN</th><th></th>
                 </tr>
               </thead>
               <tbody id="tabla-body"><tr><td colspan="20"><div class="empty">No hay datos</div></td></tr></tbody>
@@ -243,19 +247,23 @@
   <div class="sheet">
     <div class="sheet-handle"></div><div class="sheet-title">Registrar gasto</div>
     <div class="form-row">
+      <div class="form-group"><label class="form-label">Responsable</label>
+        <select id="g-responsable"><option value="">Selecciona...</option><option value="Julien">Julien</option><option value="Vanina">Vanina</option><option value="Tatiana">Tatiana</option><option value="Agustin">Agustin</option><option value="Noemie">Noemie</option><option value="Florin">Florin</option><option value="Pierre">Pierre</option><option value="Gabriel">Gabriel</option><option value="Leandre">Leandre</option><option value="Antonio">Antonio</option><option value="Franco">Franco</option><option value="Ruben">Ruben</option><option value="Daniel">Daniel</option><option value="Philippe">Philippe</option><option value="Christian">Christian</option><option value="Alberto">Alberto</option><option value="Leku">Leku</option><option value="Raul">Raul</option><option value="Imano">Imano</option><option value="Tomas">Tomas</option><option value="Laura">Laura</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Titular MC</label>
+        <select id="g-titular-mc"><option value="">Selecciona MC...</option><option value="5031 Julien">5031 Julien</option><option value="8025 Vanina">8025 Vanina</option><option value="9018 Andreea">9018 Andreea</option><option value="2015 Agustin">2015 Agustin</option><option value="1015 Noemie">1015 Noemie</option><option value="1012 Florin">1012 Florin</option><option value="8011 Pierre">8011 Pierre</option><option value="7039 Gabriel">7039 Gabriel</option><option value="6013 Leandre">6013 Leandre</option><option value="7024 Antonio">7024 Antonio</option><option value="9016 Franco">9016 Franco</option><option value="0304 Ruben">0304 Ruben</option><option value="9556 Daniel">9556 Daniel</option><option value="2494 Philippe">2494 Philippe</option><option value="7414 Christian">7414 Christian</option><option value="7380 Alberto">7380 Alberto</option></select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label class="form-label">Fecha</label><input type="date" id="g-fecha"/></div>
       <div class="form-group"><label class="form-label">Categoría</label>
         <select id="g-cat">
           <option value="comidas">🍽 Comidas</option><option value="vuelos">✈️ Vuelos</option>
           <option value="trenes">🚆 Trenes/Taxi</option><option value="alquiler">🚗 Alquiler</option>
           <option value="hoteles">🏨 Hoteles</option><option value="material">📦 Material</option>
-          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil</option><option value="otro">🧾 Otro</option>
+          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil+Peajes MC</option><option value="gasoil_dkv">🔴 Gasoil DKV/Andamur</option><option value="otro">🧾 Otro</option>
         </select>
       </div>
-    </div>
-    <div class="form-group" id="g-tarjeta-mc-group">
-      <label class="form-label">Tarjeta MC</label>
-      <select id="g-tarjeta-mc"><option value="">Selecciona tarjeta MC...</option></select>
     </div>
     <div class="form-group"><label class="form-label">Descripción / Proveedor</label><input type="text" id="g-desc" placeholder="Ej: Hotel Ibis, Ryanair..."/></div>
     <div class="form-row">
@@ -266,7 +274,7 @@
     <div class="form-group">
       <label class="form-label">📷 Foto del ticket / factura</label>
       <div class="upload-zone" onclick="document.getElementById('g-ticket').click()">Toca para fotografiar o subir ticket<br><span style="font-size:0.7rem;color:var(--accent-light)">La IA leerá los datos automáticamente</span></div>
-      <input type="file" id="g-ticket" accept="image/*" capture="environment" class="hidden" onchange="previewTicket(event)"/>
+      <input type="file" id="g-ticket" accept="image/*,application/pdf" class="hidden" onchange="previewTicket(event)"/>
       <div class="thumb-row" id="g-thumb-row"></div>
     </div>
     <div id="g-error" class="form-error hidden"></div>
@@ -287,7 +295,7 @@
           <option value="comidas">🍽 Comidas</option><option value="vuelos">✈️ Vuelos</option>
           <option value="trenes">🚆 Trenes/Taxi</option><option value="alquiler">🚗 Alquiler</option>
           <option value="hoteles">🏨 Hoteles</option><option value="material">📦 Material</option>
-          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil</option><option value="otro">🧾 Otro</option>
+          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil+Peajes MC</option><option value="gasoil_dkv">🔴 Gasoil DKV/Andamur</option><option value="otro">🧾 Otro</option>
         </select>
       </div>
     </div>
@@ -299,7 +307,7 @@
     <div class="form-group">
       <label class="form-label">Foto ticket</label>
       <div class="upload-zone" onclick="document.getElementById('ege-ticket').click()">📷 Cambiar foto</div>
-      <input type="file" id="ege-ticket" accept="image/*" capture="environment" class="hidden" onchange="previewEditTicketEmp(event)"/>
+      <input type="file" id="ege-ticket" accept="image/*,application/pdf" class="hidden" onchange="previewEditTicketEmp(event)"/>
       <div class="thumb-row" id="ege-thumb-row"></div>
     </div>
     <div id="ege-error" class="form-error hidden"></div>
@@ -416,7 +424,7 @@
           <option value="comidas">🍽 Comidas</option><option value="vuelos">✈️ Vuelos</option>
           <option value="trenes">🚆 Trenes/Taxi</option><option value="alquiler">🚗 Alquiler</option>
           <option value="hoteles">🏨 Hoteles</option><option value="material">📦 Material</option>
-          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil</option><option value="otro">🧾 Otro</option>
+          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil+Peajes MC</option><option value="gasoil_dkv">🔴 Gasoil DKV/Andamur</option><option value="otro">🧾 Otro</option>
         </select>
       </div>
     </div>
@@ -428,7 +436,7 @@
     <div class="form-group">
       <label class="form-label">Foto ticket</label>
       <div class="upload-zone" onclick="document.getElementById('eg-ticket').click()">📷 Cambiar foto</div>
-      <input type="file" id="eg-ticket" accept="image/*" capture="environment" class="hidden" onchange="previewEditTicket(event)"/>
+      <input type="file" id="eg-ticket" accept="image/*,application/pdf" class="hidden" onchange="previewEditTicket(event)"/>
       <div class="thumb-row" id="eg-thumb-row"></div>
     </div>
     <div id="eg-error" class="form-error hidden"></div>
@@ -441,8 +449,16 @@
 <div class="sheet-overlay" id="sheet-admin-gasto">
   <div class="sheet">
     <div class="sheet-handle"></div><div class="sheet-title">Añadir gasto</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Responsable</label>
+        <select id="ag-responsable"><option value="">Selecciona...</option><option value="Julien">Julien</option><option value="Vanina">Vanina</option><option value="Tatiana">Tatiana</option><option value="Agustin">Agustin</option><option value="Noemie">Noemie</option><option value="Florin">Florin</option><option value="Pierre">Pierre</option><option value="Gabriel">Gabriel</option><option value="Leandre">Leandre</option><option value="Antonio">Antonio</option><option value="Franco">Franco</option><option value="Ruben">Ruben</option><option value="Daniel">Daniel</option><option value="Philippe">Philippe</option><option value="Christian">Christian</option><option value="Alberto">Alberto</option><option value="Leku">Leku</option><option value="Raul">Raul</option><option value="Imano">Imano</option><option value="Tomas">Tomas</option><option value="Laura">Laura</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Titular MC</label>
+        <select id="ag-titular-mc"><option value="">Selecciona MC...</option><option value="5031 Julien">5031 Julien</option><option value="8025 Vanina">8025 Vanina</option><option value="9018 Andreea">9018 Andreea</option><option value="2015 Agustin">2015 Agustin</option><option value="1015 Noemie">1015 Noemie</option><option value="1012 Florin">1012 Florin</option><option value="8011 Pierre">8011 Pierre</option><option value="7039 Gabriel">7039 Gabriel</option><option value="6013 Leandre">6013 Leandre</option><option value="7024 Antonio">7024 Antonio</option><option value="9016 Franco">9016 Franco</option><option value="0304 Ruben">0304 Ruben</option><option value="9556 Daniel">9556 Daniel</option><option value="2494 Philippe">2494 Philippe</option><option value="7414 Christian">7414 Christian</option><option value="7380 Alberto">7380 Alberto</option></select>
+      </div>
+    </div>
     <div class="form-group">
-      <label class="form-label">Responsable / Tarjeta</label>
+      <label class="form-label">Tarjeta (empleado)</label>
       <select id="ag-tarjeta"><option value="">Selecciona tarjeta...</option></select>
     </div>
     <div class="form-row">
@@ -452,7 +468,8 @@
           <option value="comidas">🍽 Comidas</option><option value="vuelos">✈️ Vuelos</option>
           <option value="trenes">🚆 Trenes/Taxi</option><option value="alquiler">🚗 Alquiler</option>
           <option value="hoteles">🏨 Hoteles</option><option value="material">📦 Material</option>
-          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil</option>
+          <option value="parking">🅿️ Parking</option><option value="gasoil">⛽ Gasoil+Peajes MC</option>
+          <option value="gasoil_dkv">🔴 Gasoil DKV/Andamur</option>
           <option value="otro">🧾 Otro</option>
         </select>
       </div>
@@ -466,7 +483,7 @@
     <div class="form-group">
       <label class="form-label">📷 Foto del ticket / factura</label>
       <div class="upload-zone" onclick="document.getElementById('ag-ticket').click()">Toca para fotografiar o subir ticket<br><span style="font-size:0.7rem;color:var(--accent-light)">La IA leerá los datos automáticamente</span></div>
-      <input type="file" id="ag-ticket" accept="image/*" capture="environment" class="hidden" onchange="previewAdminTicket(event)"/>
+      <input type="file" id="ag-ticket" accept="image/*,application/pdf" class="hidden" onchange="previewAdminTicket(event)"/>
       <div class="thumb-row" id="ag-thumb-row"></div>
     </div>
     <div id="ag-error" class="form-error hidden"></div>
@@ -570,18 +587,10 @@ async function loadEmpleadoData(){
   const{data:t}=await sb.from('tarjetas').select('*').eq('empleado_id',currentUser.id).eq('activa',true).maybeSingle();
   miTarjeta=t;
   if(!t){
-    // No tarjeta assigned - show empty table row with + buttons
     document.getElementById('emp-card-display').classList.remove('hidden');
     document.getElementById('btn-add-gasto').style.display='flex';
     const{data:gastos}=await sb.from('gastos').select('*').eq('empleado_id',currentUser.id).order('fecha',{ascending:false});
     _empGastos=gastos||[];
-    // Show empty table row
-    const emptyTarjeta = {
-      id: null, nombre_titular: currentUser.email?.split('@')[0]||'—',
-      digitos:'——', fecha_entrega:null, fecha_devolucion:null,
-      coche:'', evento_principal:'', titular:'', andamur:'SIN', dkv:'SIN', dkv_importe:0
-    };
-    renderEmpTabla(emptyTarjeta, gastos||[]);
     renderGastosEmpleado(gastos||[]);
     return;
   }
@@ -698,7 +707,7 @@ function renderGastosEmpleado(gastos){
           <div class="list-amount" style="color:${col}">${parseFloat(g.monto).toFixed(2)} €</div>
           ${!devuelto?`<div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
             <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">✏️</button>
-            <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 7px;cursor:pointer;font-size:0.7rem">🗑</button>
+            <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:0.72rem;font-weight:600;border:1px solid rgba(248,113,113,0.4)">🗑 Borrar</button>
           </div>`:''}
         </div>
       </div>`;
@@ -718,18 +727,21 @@ function renderEmpTabla(t, gastos) {
   const tbody = document.getElementById('emp-tabla-body');
   if(!tbody) return;
   
-  const CAT_COLS = ['comidas','vuelos','trenes','alquiler','hoteles','material','parking','gasoil'];
   const bycat = cat => gastos.filter(g=>g.categoria===cat).reduce((s,g)=>s+parseFloat(g.monto),0);
   const catHasTicket = cat => gastos.some(g=>g.categoria===cat&&g.ticket_url);
   const catHasMissing = cat => gastos.some(g=>g.categoria===cat&&!g.ticket_url);
   const vals = CAT_COLS.map(bycat);
-  const total = vals.reduce((a,b)=>a+b,0);
+  const totalMC = vals.reduce((a,b)=>a+b,0);
+  const dkvGastosT = gastos.filter(g=>g.categoria==='gasoil_dkv').reduce((s,g)=>s+parseFloat(g.monto),0);
+  const dkvImporte = (parseFloat(t.dkv_importe)||0) + dkvGastosT;
+  const totalGeneral = totalMC + dkvImporte;
   const devuelto = !!t.fecha_devolucion;
 
   let html = `<tr class="row-main" onclick="toggleRow('emp-row')">
     <td style="text-align:center;width:22px">${gastos.length>0?'<span class="toggle-arrow" id="arrow-emp-row">▶</span>':''}</td>
     <td style="cursor:pointer" data-tid="${t.id}" data-field="fecha_entrega" data-val="${t.fecha_entrega||''}" data-label="F. Entrega" onclick="event.stopPropagation();openDatePickerCell(this)">${fmtDate(t.fecha_entrega)} ✎</td>
     <td style="cursor:pointer" data-tid="${t.id}" data-id="${t.id}" data-n="${t.nombre_titular}" onclick="event.stopPropagation();showResponsableDropdown(this,this.dataset.id,this.dataset.n)"><strong>${esc(t.nombre_titular)}</strong> ▾</td>
+    <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
     <td style="color:var(--muted);font-size:0.7rem;cursor:pointer" data-tid="${t.id}" data-coche="${t.coche||''}" onclick="event.stopPropagation();showCocheDropdown(this,this.dataset.tid,this.dataset.coche)">${esc(t.coche||'Sin coche')} ▾</td>
     <td style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-val="${esc(t.evento_principal||'')||''}" onclick="event.stopPropagation();editEventoCell(this)">${esc(t.evento_principal||'—')} ✎</td>
     ${CAT_COLS.map((cat,i)=>{
@@ -739,13 +751,13 @@ function renderEmpTabla(t, gastos) {
       const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
       const bg=hasT&&!noT?'rgba(34,211,163,0.08)':noT?'rgba(248,113,113,0.08)':'transparent';
       const catGastos=gastos.filter(g=>g.categoria===cat);
-      return`<td class="num" style="color:${color};background:${bg};font-weight:700;cursor:pointer" onclick="event.stopPropagation();showEmpCatDetail('${cat}','${(t.fecha_entrega||'').slice(0,7)}')">${v.toFixed(2)}</td>`;
+      return`<td class="num" style="color:${color};background:${bg};font-weight:700;cursor:pointer" onclick="event.stopPropagation();showImporteDetail(this,'${cat}',null)">${v.toFixed(2)}</td>`;
     }).join('')}
-    <td class="total-cell">${total.toFixed(2)} €</td>
-    <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.titular||t.digitos+' '+t.nombre_titular)}" onclick="event.stopPropagation();showTitularDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
+    <td class="total-cell">${totalMC.toFixed(2)} €</td>
     <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.andamur||'SIN')}" onclick="event.stopPropagation();showAndamurDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
     <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" data-tid="${t.id}" data-val="${esc(t.dkv||'SIN')}" onclick="event.stopPropagation();showDkvDropdown(this,this.dataset.tid,this.dataset.val)">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
-    ${t.dkv_importe&&t.dkv_importe>0?`<td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${parseFloat(t.dkv_importe).toFixed(2)}</td>`:`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" onclick="event.stopPropagation();openGastoSheet()">+</td>`}
+    <td class="num" style="color:${dkvImporte>0?'#ef4444':'var(--muted)'};cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${dkvImporte>0?dkvImporte.toFixed(2)+' 🔴':'+'}</td>
+    <td class="total-cell" style="color:#22d3a3">${totalGeneral.toFixed(2)} €</td>
     <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
   </tr>`;
 
@@ -763,8 +775,8 @@ function renderEmpTabla(t, gastos) {
       <td class="num" style="color:${gColor};font-weight:700">${parseFloat(g.monto).toFixed(2)}</td>
       <td colspan="4">${g.ticket_url?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light)">📎 ver</a>`:''}</td>
       <td style="white-space:nowrap">
-        <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem;margin-right:2px">✏️</button>
-        <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem">🗑</button>
+        <button onclick="empEditGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:4px 6px;cursor:pointer;font-size:0.72rem;margin-right:2px">✏️</button>
+        <button onclick="empDeleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:4px 8px;cursor:pointer;font-size:0.72rem;font-weight:600">🗑 Borrar</button>
       </td>
     </tr>`;
   });
@@ -811,7 +823,8 @@ function showEmpCatDetail(cat, month) {
 // EMPLEADO - editar/borrar gasto
 let _empGastos=[];
 async function empEditGasto(id){
-  const{data:gastos}=await sb.from('gastos').select('*').eq('tarjeta_id',miTarjeta.id);
+  const q=miTarjeta?sb.from('gastos').select('*').eq('tarjeta_id',miTarjeta.id):sb.from('gastos').select('*').eq('empleado_id',currentUser.id);
+  const{data:gastos}=await q;
   _empGastos=gastos||[];
   const g=_empGastos.find(x=>x.id===id);
   if(!g)return;
@@ -851,7 +864,8 @@ async function saveGastoEditEmp(){
 async function empDeleteGasto(id){
   if(!confirm('¿Eliminar este gasto?'))return;
   await sb.from('gastos').delete().eq('id',id);
-  toast('Gasto eliminado');loadEmpleadoData();
+  toast('Gasto eliminado');
+  if(isAdmin)loadAdminData();else loadEmpleadoData();
 }
 
 // ADMIN
@@ -922,7 +936,13 @@ function renderCatTotals(month, tarjetas, gastos) {
     {key:'gasoil',icon:'⛽',name:'Gasoil'},
   ];
   
-  const grandTotal = mGastos.reduce((s,g)=>s+parseFloat(g.monto),0);
+  const gasoilMC=mGastos.filter(g=>g.categoria==='gasoil').reduce((s,g)=>s+parseFloat(g.monto),0);
+  const dkvGastos=mGastos.filter(g=>g.categoria==='gasoil_dkv').reduce((s,g)=>s+parseFloat(g.monto),0);
+  const tMesT=tarjetas.filter(t=>t.fecha_entrega&&t.fecha_entrega.startsWith(month));
+  const dkvImportes=tMesT.reduce((s,t)=>s+(parseFloat(t.dkv_importe)||0),0);
+  const totalDKV=dkvGastos+dkvImportes;
+  const totalMC=mGastos.reduce((s,g)=>s+parseFloat(g.monto),0);
+  const grandTotal=totalMC+totalDKV;
   
   wrap.innerHTML = `
     <div class="cat-total-card active" style="border-color:#f69032;background:rgba(246,144,50,0.08);min-width:90px">
@@ -942,6 +962,21 @@ function renderCatTotals(month, tarjetas, gastos) {
         <div class="cat-total-val ${valClass}">${total>0?total.toFixed(2)+' €':'—'}</div>
       </div>`;
     }).join('')}
+    <div class="cat-total-card" style="border-color:#f59e0b;background:rgba(245,158,11,0.06)">
+      <div class="cat-total-icon">⛽</div>
+      <div class="cat-total-name">Gasoil MC</div>
+      <div class="cat-total-val" style="color:#f59e0b">${gasoilMC>0?gasoilMC.toFixed(2)+' €':'—'}</div>
+    </div>
+    <div class="cat-total-card" style="border-color:#ef4444;background:rgba(239,68,68,0.06)">
+      <div class="cat-total-icon">🔴</div>
+      <div class="cat-total-name">Gasoil DKV</div>
+      <div class="cat-total-val" style="color:#ef4444">${totalDKV>0?totalDKV.toFixed(2)+' €':'—'}</div>
+    </div>
+    <div class="cat-total-card" style="border-color:#6366f1;background:rgba(99,102,241,0.08)">
+      <div class="cat-total-icon">💳</div>
+      <div class="cat-total-name">Total MC</div>
+      <div class="cat-total-val" style="color:#818cf8">${totalMC.toFixed(2)} €</div>
+    </div>
   `;
 }
 
@@ -975,20 +1010,24 @@ function renderTablaForMonth(month,tarjetas,gastos){
     const catHasTicket=cat=>tG.some(g=>g.categoria===cat&&g.ticket_url);
     const catHasMissing=cat=>tG.some(g=>g.categoria===cat&&!g.ticket_url);
     const vals=CAT_COLS.map(bycat);
-    const total=vals.reduce((a,b)=>a+b,0);
+    const totalMC=vals.reduce((a,b)=>a+b,0);
+    const dkvGastosT=tG.filter(g=>g.categoria==='gasoil_dkv').reduce((s,g)=>s+parseFloat(g.monto),0);
+    const dkvImporte=(parseFloat(t.dkv_importe)||0)+dkvGastosT;
+    const totalGeneral=totalMC+dkvImporte;
     const devuelto=!!t.fecha_devolucion;
     const rowId=`row-${month}-${idx}`;
     const hasGastos=tG.length>0;
 
-    html+=`<tr class="row-main" onclick="${hasGastos?`toggleRow('${rowId}')` :''}">
+    html+=`<tr class="row-main" onclick="${hasGastos?`toggleRow('${rowId}')`:'' }">
       <td style="text-align:center;width:22px">${hasGastos?`<span class="toggle-arrow" id="arrow-${rowId}">▶</span>`:''}</td>
       <td style="cursor:pointer" data-tid="${t.id}" data-field="fecha_entrega" data-val="${t.fecha_entrega||''}" data-label="F. Entrega" onclick="event.stopPropagation();openDatePickerCell(this)">${fmtDate(t.fecha_entrega)} ✎</td>
-      <td style="cursor:pointer" onclick="event.stopPropagation();showResponsableDropdown(this,'${t.id}','${esc(t.nombre_titular)}')""><strong>${esc(t.nombre_titular)}</strong> ▾</td>
+      <td style="cursor:pointer" onclick="event.stopPropagation();showResponsableDropdown(this,'${t.id}','${esc(t.nombre_titular)}')" ><strong>${esc(t.nombre_titular)}</strong> ▾</td>
+      <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
       <td style="color:var(--muted);font-size:0.7rem;cursor:pointer" onclick="event.stopPropagation();showCocheDropdown(this,'${t.id}','${esc(t.coche||'')}')">${esc(t.coche||'Sin coche')} ▾</td>
       <td style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-val="${esc(t.evento_principal||'')||''}" onclick="event.stopPropagation();editEventoCell(this)">${esc(t.evento_principal||'—')} ✎</td>
       ${CAT_COLS.map((cat,i)=>{
         const v=vals[i];
-        if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" data-cat="${cat}" onclick="event.stopPropagation();openAdminGastoSheetWith(this.dataset.tid,this.dataset.cat)">+</td>`;
+        if(v<=0)return`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" data-cat="${cat}" onclick="event.stopPropagation();openAdminGastoSheetWith('${t.id}','${cat}')">+</td>`;
         const hasT=catHasTicket(cat);
         const noT=catHasMissing(cat);
         const color=hasT&&!noT?'#22d3a3':noT?'#f87171':'var(--text)';
@@ -998,11 +1037,11 @@ function renderTablaForMonth(month,tarjetas,gastos){
         const clickFn=catGastos.length>0?`onclick="event.stopPropagation();showImporteDetail(this,'${cat}','${t.id}')"`:'' ;
         return`<td class="num" style="color:${color};background:${bg};font-weight:700;${catGastos.length>0?'cursor:pointer;':''}" title="${tooltip}" ${clickFn}>${v.toFixed(2)}</td>`;
       }).join('')}
-      <td class="total-cell">${total.toFixed(2)} €</td>
-      <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showTitularDropdown(this,'${t.id}','${esc(t.titular||t.digitos+' '+t.nombre_titular)}')">${esc(t.titular||t.digitos+' '+t.nombre_titular||'—')} ▾</td>
+      <td class="total-cell">${totalMC.toFixed(2)} €</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showAndamurDropdown(this,'${t.id}','${esc(t.andamur||'SIN')}')">${esc(t.andamur&&t.andamur!=='SIN'?t.andamur:'SIN')} ▾</td>
       <td style="font-size:0.68rem;color:var(--muted);cursor:pointer" onclick="event.stopPropagation();showDkvDropdown(this,'${t.id}','${esc(t.dkv||'SIN')}')">${esc(t.dkv&&t.dkv!=='SIN'?t.dkv:'SIN')} ▾</td>
-      ${t.dkv_importe&&t.dkv_importe>0?`<td class="num" style="color:var(--muted);font-size:0.68rem;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${parseFloat(t.dkv_importe).toFixed(2)}</td>`:`<td class="num" style="color:var(--muted);opacity:0.4;cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();openAdminGastoSheetWith(this.dataset.tid,'gasoil')" >+</td>`}
+      <td class="num" style="color:${dkvImporte>0?'#ef4444':'var(--muted)'};font-weight:${dkvImporte>0?700:400};cursor:pointer" data-tid="${t.id}" onclick="event.stopPropagation();editDkvImporte(this)">${dkvImporte>0?dkvImporte.toFixed(2)+' 🔴':'+'}</td>
+      <td class="total-cell" style="color:#22d3a3">${totalGeneral.toFixed(2)} €</td>
       <td style="font-size:0.68rem;cursor:pointer" data-tid="${t.id}" data-field="fecha_devolucion" data-val="${t.fecha_devolucion||''}" data-label="F. Devolución" onclick="event.stopPropagation();openDatePickerCell(this)">${devuelto?`<span class="chip chip-green">${fmtDate(t.fecha_devolucion)}</span>`:`<span class="chip chip-amber">Pendiente ✎</span>`}</td>
       <td style="white-space:nowrap">
         <button onclick="event.stopPropagation();editTarjeta('${t.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 6px;cursor:pointer;font-size:0.68rem;margin-right:2px">✏️</button>
@@ -1014,18 +1053,21 @@ function renderTablaForMonth(month,tarjetas,gastos){
       const gOk=!!g.ticket_url;
       const gColor=gOk?'#22d3a3':'#f87171';
       const gBg=gOk?'rgba(34,211,163,0.08)':'rgba(248,113,113,0.08)';
-      const gcols=CAT_COLS.map(cat=>cat===g.categoria?`<td class="num" style="color:${gColor};background:${gBg};font-weight:600">${parseFloat(g.monto).toFixed(2)} ${gOk?'📎':'⚠️'}</td>`:'<td></td>');
+      const isDKV=g.categoria==='gasoil_dkv';
+      const gcols=CAT_COLS.map(cat=>(!isDKV&&cat===g.categoria)?`<td class="num" style="color:${gColor};background:${gBg};font-weight:600">${parseFloat(g.monto).toFixed(2)} ${gOk?'📎':'⚠️'}</td>`:'<td></td>');
       html+=`<tr class="row-sub" id="sub-${rowId}-${g.id}">
         <td></td><td>${fmtDate(g.fecha)}</td>
-        <td colspan="2" style="color:var(--text)">• ${esc(g.descripcion)}</td>
+        <td colspan="3" style="color:var(--text)">• ${esc(g.descripcion)}${isDKV?` <span style="color:#ef4444;font-size:0.65rem;font-weight:700">DKV</span>`:''}</td>
         <td style="color:var(--muted);font-size:0.65rem">${g.evento||''}</td>
         ${gcols.join('')}
-        <td class="num" style="color:${gColor};font-weight:700">${parseFloat(g.monto).toFixed(2)}</td>
-        <td colspan="4">${g.ticket_url?`<a href="#" onclick="viewTicket('${g.ticket_url}');return false" style="color:var(--accent-light)">ver</a>`:''}</td>
+        <td class="num" style="color:${isDKV?'var(--muted)':gColor};font-weight:700">${isDKV?'—':parseFloat(g.monto).toFixed(2)}</td>
+        <td></td><td></td>
+        <td class="num" style="color:${isDKV?'#ef4444':'var(--muted)'};font-weight:${isDKV?700:400}">${isDKV?parseFloat(g.monto).toFixed(2)+' 🔴':'—'}</td>
         <td></td>
+        <td style="white-space:nowrap">${g.ticket_url?`<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(34,211,163,0.12);border:1px solid rgba(34,211,163,0.35);border-radius:12px;padding:2px 7px;font-size:0.68rem;color:#22d3a3;font-weight:600;cursor:pointer" onclick="viewTicket('${g.ticket_url}')">✓ 📎</span>`:'<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.35);border-radius:12px;padding:2px 7px;font-size:0.68rem;color:#f87171;font-weight:600">⚠️</span>'}</td>
         <td style="white-space:nowrap">
-          <button onclick="event.stopPropagation();editGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem;margin-right:2px">✏️</button>
-          <button onclick="event.stopPropagation();deleteGasto('${g.id}')" style="background:rgba(248,113,113,0.15);color:var(--danger);border:none;border-radius:5px;padding:2px 5px;cursor:pointer;font-size:0.65rem">🗑</button>
+          <button onclick="event.stopPropagation();editGasto('${g.id}')" style="background:rgba(99,102,241,0.15);color:var(--accent-light);border:none;border-radius:5px;padding:4px 6px;cursor:pointer;font-size:0.72rem;margin-right:2px">✏️</button>
+          <button onclick="event.stopPropagation();deleteGasto('${g.id}')" style="background:rgba(248,113,113,0.2);color:var(--danger);border:1px solid rgba(248,113,113,0.4);border-radius:5px;padding:4px 8px;cursor:pointer;font-size:0.72rem;font-weight:600">🗑 Borrar</button>
         </td>
       </tr>`;
     });
@@ -1154,7 +1196,6 @@ async function saveGasto(){
   if(!fecha||!desc||!monto||monto<=0){showError('g-error','Rellena fecha, descripción e importe');return;}
   // If no tarjeta assigned, require MC selection
   const mcVal=document.getElementById('g-tarjeta-mc').value;
-  if(!miTarjeta&&!mcVal){showError('g-error','Selecciona la tarjeta MC');return;}
   const btn=document.getElementById('btn-save-gasto');setLoading(btn,true);
   let ticket_url=null;
   if(gastoTicketFile){
@@ -1164,9 +1205,12 @@ async function saveGasto(){
     if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
   }
   const lugar=document.getElementById('g-lugar').value.trim();
-  const mcSel=document.getElementById('g-tarjeta-mc').value;
+  const responsable=document.getElementById('g-responsable')?.value||'';
+  const titularMC=document.getElementById('g-titular-mc')?.value||'';
   const gastoData={empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,ticket_url,lugar};
-  if(miTarjeta){gastoData.tarjeta_id=miTarjeta.id;}else{gastoData.titular=mcSel;}
+  if(responsable)gastoData.nombre_responsable=responsable;
+  if(titularMC)gastoData.titular=titularMC;
+  if(miTarjeta){gastoData.tarjeta_id=miTarjeta.id;}
   const{error}=await sb.from('gastos').insert(gastoData);
   setLoading(btn,false);
   if(error){showError('g-error',error.message);return;}
@@ -1429,7 +1473,13 @@ async function saveAdminGasto() {
     const{error:upErr}=await sb.storage.from('tickets').upload(path,adminGastoTicketFile);
     if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
   }
-  const{error}=await sb.from('gastos').insert({tarjeta_id:tarjetaId,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,lugar,ticket_url});
+  const agResp=document.getElementById('ag-responsable')?.value||'';
+  const agTitular=document.getElementById('ag-titular-mc')?.value||'';
+  const gastoInsert={empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,lugar,ticket_url};
+  if(tarjetaId)gastoInsert.tarjeta_id=tarjetaId;
+  if(agResp)gastoInsert.nombre_responsable=agResp;
+  if(agTitular)gastoInsert.titular=agTitular;
+  const{error}=await sb.from('gastos').insert(gastoInsert);
   setLoading(btn,false);
   if(error){showError('ag-error',error.message);return;}
   closeSheet('sheet-admin-gasto');
@@ -1752,57 +1802,63 @@ function showTitularDropdown(el, tarjetaId, currentVal) {
 }
 
 // IMPORTE DETAIL POPUP
+function closeImportePopup(){document.querySelectorAll('.importe-popup').forEach(function(p){p.remove();});}
+
 function showImporteDetail(el, cat, tarjetaId) {
-  // Remove existing popup
-  document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
-  
-  const gastos = _allGastos.filter(g=>g.tarjeta_id===tarjetaId && g.categoria===cat);
-  if(!gastos.length) return;
-  
-  const CAT_NAMES = {comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil'};
-  
+  closeImportePopup();
+  const allG = tarjetaId
+    ? _allGastos.filter(function(g){return g.tarjeta_id===tarjetaId && g.categoria===cat;})
+    : (_empGastos||[]).filter(function(g){return g.categoria===cat;});
+  const CAT_NAMES={comidas:'Comidas',vuelos:'Vuelos',trenes:'Trenes/Taxi',alquiler:'Alquiler',hoteles:'Hoteles',material:'Material',parking:'Parking',gasoil:'Gasoil+Peajes MC',otro:'Otro'};
   const popup = document.createElement('div');
   popup.className = 'importe-popup';
-  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.4);border-radius:10px;padding:0.75rem;z-index:500;min-width:220px;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,0.4);font-size:0.78rem';
-  
-  popup.innerHTML = `
-    <div style="font-weight:700;color:#f69032;margin-bottom:0.5rem;font-size:0.8rem">${CAT_NAMES[cat]||cat}</div>
-    ${gastos.map(g=>`
-      <div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-        <div style="display:flex;justify-content:space-between;gap:0.5rem">
-          <span style="color:#f1f5f9;font-weight:600;flex:1">${esc(g.descripcion)}</span>
-          <span style="color:${g.ticket_url?'#22d3a3':'#f87171'};font-weight:700;white-space:nowrap">${parseFloat(g.monto).toFixed(2)} € ${g.ticket_url?`<span onclick="event.stopPropagation();viewTicket('${g.ticket_url}')" style="cursor:pointer;font-size:1rem" title="Ver ticket">📎</span>`:'⚠️'}</span>
-        </div>
-        ${g.lugar?`<div style="color:#94a3b8;font-size:0.7rem;margin-top:2px">📍 ${esc(g.lugar)}</div>`:''}
-        ${g.fecha?`<div style="color:#64748b;font-size:0.68rem">${fmtDate(g.fecha)}</div>`:''}
-      </div>`).join('')}
-    <div style="display:flex;justify-content:space-between;padding-top:6px;font-weight:700;color:#f9a84d">
-      <span>Total</span>
-      <span>${gastos.reduce((s,g)=>s+parseFloat(g.monto),0).toFixed(2)} €</span>
-    </div>
-  `;
-  
+  popup.style.cssText = 'position:fixed;background:#1e293b;border:1px solid rgba(246,144,50,0.5);border-radius:12px;z-index:600;min-width:260px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden';
+
+  let inner = '<div style="padding:8px 14px;background:rgba(246,144,50,0.15);border-bottom:1px solid rgba(246,144,50,0.3);display:flex;justify-content:space-between;align-items:center">';
+  inner += '<span style="font-weight:700;color:#f69032;font-size:0.82rem">' + (CATS[cat]||'') + ' ' + (CAT_NAMES[cat]||cat) + '</span>';
+  inner += '<button onclick="closeImportePopup()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:1rem">✕</button>';
+  inner += '</div>';
+
+  if(!allG.length) {
+    inner += '<div style="padding:1rem;text-align:center;color:#94a3b8">Sin gastos.</div>';
+  } else {
+    allG.forEach(function(g) {
+      const ok = !!g.ticket_url;
+      const col = ok ? '#22d3a3' : '#f87171';
+      const editFn = tarjetaId ? 'editGasto' : 'empEditGasto';
+      const delFn = tarjetaId ? 'deleteGasto' : 'empDeleteGasto';
+      inner += '<div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.05)">';
+      inner += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
+      inner += '<span style="color:#f1f5f9;font-weight:600;flex:1;font-size:0.8rem">' + esc(g.descripcion) + '</span>';
+      inner += '<span style="color:' + col + ';font-weight:700;white-space:nowrap;font-size:0.85rem">' + parseFloat(g.monto).toFixed(2) + ' €';
+      inner += '</span></div>';
+      if(g.lugar) inner += '<div style="color:#94a3b8;font-size:0.7rem;margin-top:2px">📍 ' + esc(g.lugar) + '</div>';
+      inner += '<div style="color:#64748b;font-size:0.68rem;margin-top:1px">' + fmtDate(g.fecha) + '</div>';
+      inner += '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:4px">';
+      if(g.evento) inner += '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:2px 7px;font-size:0.7rem;color:#818cf8;font-weight:600">📅 ' + esc(g.evento) + '</span>';
+      if(ok) {
+        inner += '<span onclick="event.stopPropagation();viewTicket(\'' + g.ticket_url + '\')" style="display:inline-flex;align-items:center;gap:3px;background:rgba(34,211,163,0.12);border:1px solid rgba(34,211,163,0.35);border-radius:8px;padding:2px 7px;font-size:0.7rem;color:#22d3a3;font-weight:600;cursor:pointer">📎 ver</span>';
+      } else {
+        inner += '<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.35);border-radius:8px;padding:2px 7px;font-size:0.7rem;color:#f87171;font-weight:600">⚠️ Sin doc</span>';
+      }
+      inner += '</div>';
+    });
+  }
+  popup.innerHTML = inner;
   document.body.appendChild(popup);
-  
-  // Position near clicked element
   const rect = el.getBoundingClientRect();
-  let top = rect.bottom + 4;
-  let left = rect.left;
-  
-  // Keep within viewport
-  if(left + 300 > window.innerWidth) left = window.innerWidth - 310;
-  if(top + 200 > window.innerHeight) top = rect.top - popup.offsetHeight - 4;
-  
+  let top = rect.bottom + 4, left = rect.left;
+  if(left + 330 > window.innerWidth) left = window.innerWidth - 340;
+  if(top + 300 > window.innerHeight) top = rect.top - 300;
   popup.style.top = top + 'px';
   popup.style.left = left + 'px';
-  
-  // Close on click outside
-  setTimeout(()=>{
-    document.addEventListener('click', ()=>{
-      document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
-    }, {once:true});
-  }, 10);
+  setTimeout(function(){
+    document.addEventListener('click', function(e){
+      if(!popup.contains(e.target)) closeImportePopup();
+    },{once:true});
+  }, 50);
 }
+
 
 // UTILS
 function openSheet(id){document.getElementById(id).classList.add('open');}
@@ -1851,7 +1907,13 @@ async function saveAdminGasto() {
     const{error:upErr}=await sb.storage.from('tickets').upload(path,adminGastoTicketFile);
     if(!upErr){const{data:pub}=sb.storage.from('tickets').getPublicUrl(path);ticket_url=pub.publicUrl;}
   }
-  const{error}=await sb.from('gastos').insert({tarjeta_id:tarjetaId,empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,lugar,ticket_url});
+  const agResp=document.getElementById('ag-responsable')?.value||'';
+  const agTitular=document.getElementById('ag-titular-mc')?.value||'';
+  const gastoInsert={empleado_id:currentUser.id,fecha,descripcion:desc,monto,categoria:cat,evento,lugar,ticket_url};
+  if(tarjetaId)gastoInsert.tarjeta_id=tarjetaId;
+  if(agResp)gastoInsert.nombre_responsable=agResp;
+  if(agTitular)gastoInsert.titular=agTitular;
+  const{error}=await sb.from('gastos').insert(gastoInsert);
   setLoading(btn,false);
   if(error){showError('ag-error',error.message);return;}
   closeSheet('sheet-admin-gasto');
@@ -2176,7 +2238,7 @@ function showTitularDropdown(el, tarjetaId, currentVal) {
 // IMPORTE DETAIL POPUP
 function showImporteDetail(el, cat, tarjetaId) {
   // Remove existing popup
-  document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+  document.querySelectorAll(\'.importe-popup\').forEach(p=>p.remove());
   
   const gastos = _allGastos.filter(g=>g.tarjeta_id===tarjetaId && g.categoria===cat);
   if(!gastos.length) return;
@@ -2221,11 +2283,46 @@ function showImporteDetail(el, cat, tarjetaId) {
   // Close on click outside
   setTimeout(()=>{
     document.addEventListener('click', ()=>{
-      document.querySelectorAll('.importe-popup').forEach(p=>p.remove());
+      document.querySelectorAll(\'.importe-popup\').forEach(p=>p.remove());
     }, {once:true});
   }, 10);
 }
 
+
+function openDatePickerCell(el){
+  openDatePicker(el,el.dataset.tid,el.dataset.field,el.dataset.val||'',el.dataset.label||'Fecha');
+}
+function toggleSearch(){const b=document.getElementById('search-bar');b.classList.toggle('hidden');if(!b.classList.contains('hidden'))document.getElementById('admin-search').focus();}
+function toggleFilter(){const p=document.getElementById('filter-panel');p.classList.toggle('hidden');if(!p.classList.contains('hidden'))populateFilterOptions();}
+function populateFilterOptions(){
+  const ev=[...new Set(_allTarjetas.map(t=>t.evento_principal).filter(Boolean))].sort();
+  const re=[...new Set(_allTarjetas.map(t=>t.nombre_titular).filter(Boolean))].sort();
+  const ti=[...new Set(_allTarjetas.map(t=>t.titular||t.nombre_titular).filter(Boolean))].sort();
+  const eEl=document.getElementById('filter-evento');
+  const rEl=document.getElementById('filter-responsable');
+  const tEl=document.getElementById('filter-titular');
+  const ev2=eEl.value,rv=rEl.value,tv=tEl.value;
+  eEl.innerHTML='<option value="">Todos eventos</option>'+ev.map(e=>'<option value="'+e+'">'+e+'</option>').join('');
+  rEl.innerHTML='<option value="">Todos responsables</option>'+re.map(r=>'<option value="'+r+'">'+r+'</option>').join('');
+  tEl.innerHTML='<option value="">Todas MC</option>'+ti.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+  eEl.value=ev2;rEl.value=rv;tEl.value=tv;
+}
+function applySearchFilter(){
+  const s=(document.getElementById('admin-search')?.value||'').toLowerCase();
+  const ev=document.getElementById('filter-evento')?.value||'';
+  const re=document.getElementById('filter-responsable')?.value||'';
+  const ti=document.getElementById('filter-titular')?.value||'';
+  let t=_allTarjetas;
+  if(s)t=t.filter(x=>(x.nombre_titular||'').toLowerCase().includes(s)||(x.evento_principal||'').toLowerCase().includes(s)||(x.coche||'').toLowerCase().includes(s));
+  if(ev)t=t.filter(x=>x.evento_principal===ev);
+  if(re)t=t.filter(x=>x.nombre_titular===re);
+  if(ti)t=t.filter(x=>(x.titular||x.nombre_titular)===ti);
+  renderTablaForMonth(_currentMonth,t,_allGastos);
+}
+function clearFilters(){
+  ['admin-search','filter-evento','filter-responsable','filter-titular'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderTablaForMonth(_currentMonth,_allTarjetas,_allGastos);
+}
 // UTILS
 function openSheet(id){document.getElementById(id).classList.add('open');}
 function closeSheet(id){document.getElementById(id).classList.remove('open');}
