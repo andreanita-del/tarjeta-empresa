@@ -1096,4 +1096,13 @@ function openSheet(id){document.getElementById(id).classList.add('open');}
 function closeSheet(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.sheet-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 function setLoad(btn,on){if(on){btn._t=btn.innerHTML;btn.innerHTML='<div class="spinner"></div>';btn.disabled=true;}else{btn.innerHTML=btn._t||btn.innerHTML;btn.disabled=false;}}
-function showErr(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.remov
+function showErr(id,msg){const e=document.getElementById(id);e.textContent=msg;e.classList.remove('hidden');}
+function toast(msg,dur=2200){const t=document.getElementById('toast-el');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+function fmtDate(d){if(!d)return'—';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function hoy(){return new Date().toISOString().slice(0,10);}
+function viewTicket(url){const m=document.getElementById('ticket-modal');document.getElementById('ticket-modal-img').src=url;m.classList.add('open');}
+function closeTicket(){document.getElementById('ticket-modal').classList.remove('open');}
+</script>
+</body>
+</html>
